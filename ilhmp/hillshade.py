@@ -15,28 +15,31 @@ from pathlib import Path
 from typing import Optional, Tuple, Dict
 
 import numpy as np
+from osgeo import gdal
 
-# Color presets: (R, G, B) multipliers for hillshade value, plus background RGB
+gdal.UseExceptions()
+
+# Color presets: (tint RGB 0-255, background RGB 0-255)
 STYLES: Dict[str, Dict] = {
     "dark": {
-        "tint": (0.30, 0.40, 0.60),  # Blue-gray
-        "bg": (18, 18, 18),           # Near-black
+        "tint": (77, 102, 153),     # Blue-gray
+        "bg": (18, 18, 18),          # Near-black
     },
     "light": {
-        "tint": (0.85, 0.82, 0.78),  # Warm gray
-        "bg": (250, 250, 250),        # Near-white
+        "tint": (217, 209, 199),    # Warm gray
+        "bg": (250, 250, 250),       # Near-white
     },
     "tactical": {
-        "tint": (0.33, 0.42, 0.18),  # Olive drab
-        "bg": (24, 24, 20),
+        "tint": (85, 107, 47),      # Olive drab
+        "bg": (24, 24, 20),          # Dark olive-black
     },
     "terrain": {
-        "tint": (0.55, 0.47, 0.40),  # Earth brown
-        "bg": (245, 240, 230),
+        "tint": (140, 120, 100),    # Earth brown
+        "bg": (245, 240, 230),       # Cream
     },
     "gray": {
-        "tint": (1.0, 1.0, 1.0),     # Pure grayscale
-        "bg": (0, 0, 0),
+        "tint": (255, 255, 255),    # White
+        "bg": (0, 0, 0),             # Black
     },
 }
 
@@ -48,7 +51,7 @@ def generate(
     exaggeration: float = 3.0,
     azimuth: float = 315.0,
     altitude: float = 45.0,
-    custom_tint: Optional[Tuple[float, float, float]] = None,
+    custom_tint: Optional[Tuple[int, int, int]] = None,
     custom_bg: Optional[Tuple[int, int, int]] = None,
 ) -> Path:
     """
@@ -56,13 +59,13 @@ def generate(
     
     Args:
         input_dem: Input DEM GeoTIFF
-        output_path: Output styled hillshade GeoTIFF
+        output_path: Output styled hillshade GeoTIFF (RGBA)
         style: Color style name or 'custom'
-        exaggeration: Vertical exaggeration factor
-        azimuth: Sun azimuth in degrees (0-360, 0=N)
-        altitude: Sun altitude in degrees (0-90)
-        custom_tint: RGB multipliers (0-1) for custom style
-        custom_bg: RGB background (0-255) for custom style
+        exaggeration: Vertical exaggeration factor (z-factor)
+        azimuth: Sun azimuth in degrees (0-360, 0=N, default 315=NW)
+        altitude: Sun altitude in degrees (0-90, default 45)
+        custom_tint: RGB tuple (0-255) for custom style peak color
+        custom_bg: RGB tuple (0-255) for custom style background
     
     Returns:
         Path to the output file
@@ -90,18 +93,8 @@ def generate(
         # Step 1: Generate grayscale hillshade
         _generate_grayscale(input_dem, gray_path, exaggeration, azimuth, altitude)
         
-        # Step 2: Apply color tint
-        if style == "gray":
-            # Just copy the grayscale
-            subprocess.run([
-                "gdal_translate",
-                "-co", "COMPRESS=DEFLATE",
-                "-co", "TILED=YES",
-                str(gray_path),
-                str(output_path)
-            ], check=True, capture_output=True)
-        else:
-            _apply_color_tint(gray_path, output_path, tint, bg)
+        # Step 2: Apply color tint with proper alpha
+        _apply_color_tint(gray_path, output_path, tint, bg)
     
     return output_path
 
@@ -114,17 +107,11 @@ def _generate_grayscale(
     altitude: float,
 ) -> None:
     """Generate grayscale hillshade using gdaldem."""
-    # Detect if input is in feet (common for ILHMP data)
-    # Z-factor converts vertical to horizontal units
-    # For WGS84 (degrees) input with feet elevation: z = exaggeration * 0.3048 / 111120
-    # For now, assume reprojected to meters
-    z_factor = exaggeration
-    
     cmd = [
         "gdaldem", "hillshade",
         str(input_dem),
         str(output_path),
-        "-z", str(z_factor),
+        "-z", str(exaggeration),
         "-az", str(azimuth),
         "-alt", str(altitude),
         "-compute_edges",
@@ -140,39 +127,33 @@ def _generate_grayscale(
 def _apply_color_tint(
     input_gray: Path,
     output_path: Path,
-    tint: Tuple[float, float, float],
+    tint: Tuple[int, int, int],
     bg: Tuple[int, int, int],
 ) -> None:
-    """Apply color tint to grayscale hillshade using GDAL."""
-    from osgeo import gdal
-    gdal.UseExceptions()
+    """
+    Apply color tint to grayscale hillshade.
     
+    Uses numpy for correct alpha channel handling.
+    Hillshade value 0 = nodata (transparent), 1-255 = valid data.
+    """
     src = gdal.Open(str(input_gray))
-    band = src.GetRasterBand(1)
-    data = band.ReadAsArray().astype(np.float32)
-    nodata = band.GetNoDataValue()
+    hs = src.GetRasterBand(1).ReadAsArray().astype(np.float32)
     
-    # Create nodata mask
-    if nodata is not None:
-        mask = (data == nodata) | (data < 1)
-    else:
-        mask = data < 1
+    # Normalize hillshade 0-255 -> 0-1
+    hs_norm = hs / 255.0
     
-    # Normalize to 0-1
-    data = np.clip(data, 0, 255) / 255.0
+    # Calculate RGB: interpolate from bg to tint based on hillshade
+    bg_arr = np.array(bg, dtype=np.float32)
+    tint_arr = np.array(tint, dtype=np.float32)
     
-    # Apply tint: blend from bg to tint based on hillshade value
-    bg_norm = np.array(bg) / 255.0
-    tint_arr = np.array(tint)
+    r = (bg_arr[0] + hs_norm * (tint_arr[0] - bg_arr[0])).astype(np.uint8)
+    g = (bg_arr[1] + hs_norm * (tint_arr[1] - bg_arr[1])).astype(np.uint8)
+    b = (bg_arr[2] + hs_norm * (tint_arr[2] - bg_arr[2])).astype(np.uint8)
     
-    r = (bg_norm[0] + data * (tint_arr[0] - bg_norm[0])) * 255
-    g = (bg_norm[1] + data * (tint_arr[1] - bg_norm[1])) * 255
-    b = (bg_norm[2] + data * (tint_arr[2] - bg_norm[2])) * 255
+    # Alpha: 255 where hillshade > 0, 0 where nodata
+    alpha = np.where(hs > 0, 255, 0).astype(np.uint8)
     
-    # Alpha channel: transparent where nodata
-    a = np.where(mask, 0, 255).astype(np.uint8)
-    
-    # Write output
+    # Write RGBA output
     driver = gdal.GetDriverByName('GTiff')
     out = driver.Create(
         str(output_path),
@@ -180,14 +161,19 @@ def _apply_color_tint(
         src.RasterYSize,
         4,  # RGBA
         gdal.GDT_Byte,
-        options=['COMPRESS=DEFLATE', 'TILED=YES']
+        options=['COMPRESS=DEFLATE', 'TILED=YES', 'BIGTIFF=IF_SAFER']
     )
     out.SetGeoTransform(src.GetGeoTransform())
     out.SetProjection(src.GetProjection())
-    out.GetRasterBand(1).WriteArray(np.clip(r, 0, 255).astype(np.uint8))
-    out.GetRasterBand(2).WriteArray(np.clip(g, 0, 255).astype(np.uint8))
-    out.GetRasterBand(3).WriteArray(np.clip(b, 0, 255).astype(np.uint8))
-    out.GetRasterBand(4).WriteArray(a)
+    out.GetRasterBand(1).WriteArray(r)
+    out.GetRasterBand(2).WriteArray(g)
+    out.GetRasterBand(3).WriteArray(b)
+    out.GetRasterBand(4).WriteArray(alpha)
     out.FlushCache()
     out = None
     src = None
+
+
+def get_styles() -> Dict[str, Dict]:
+    """Return available color styles."""
+    return STYLES.copy()

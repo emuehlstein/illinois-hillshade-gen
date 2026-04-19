@@ -8,6 +8,40 @@ import shutil
 from pathlib import Path
 
 
+def generate_tiles_direct(
+    input_raster: Path,
+    output_dir: Path,
+    min_zoom: int = 10,
+    max_zoom: int = 16,
+) -> Path:
+    """
+    Generate XYZ tile directory from a hillshade raster.
+    """
+    input_raster = Path(input_raster)
+    output_dir = Path(output_dir)
+    
+    # Remove existing
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    cmd = [
+        "gdal2tiles.py",
+        "-z", f"{min_zoom}-{max_zoom}",
+        "-w", "none",
+        "--xyz",
+        "--processes=4",
+        str(input_raster),
+        str(output_dir),
+    ]
+    
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"gdal2tiles failed: {result.stderr}")
+    
+    return output_dir
+
+
 def generate_mbtiles(
     input_raster: Path,
     output_path: Path,
@@ -27,35 +61,35 @@ def generate_mbtiles(
         tmp_dir = Path(tmp_dir)
         tiles_dir = tmp_dir / "tiles"
         
-        # Generate tiles with gdal2tiles
-        cmd = [
-            "gdal2tiles.py",
-            "-z", f"{min_zoom}-{max_zoom}",
-            "-w", "none",  # No web viewer
-            "--xyz",       # XYZ tile scheme (not TMS)
-            str(input_raster),
-            str(tiles_dir),
-        ]
-        
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"gdal2tiles failed: {result.stderr}")
-        
-        # Pack to MBTiles using mb-util
-        # Remove existing output
-        if output_path.exists():
-            output_path.unlink()
-        
-        cmd = [
-            "mb-util",
-            str(tiles_dir),
-            str(output_path),
-            "--image_format=png",
-        ]
-        
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"mb-util failed: {result.stderr}")
+        generate_tiles_direct(input_raster, tiles_dir, min_zoom, max_zoom)
+        generate_mbtiles_from_dir(tiles_dir, output_path)
+    
+    return output_path
+
+
+def generate_mbtiles_from_dir(
+    tiles_dir: Path,
+    output_path: Path,
+) -> Path:
+    """
+    Pack an XYZ tiles directory into MBTiles.
+    """
+    tiles_dir = Path(tiles_dir)
+    output_path = Path(output_path)
+    
+    if output_path.exists():
+        output_path.unlink()
+    
+    cmd = [
+        "mb-util",
+        str(tiles_dir),
+        str(output_path),
+        "--image_format=png",
+    ]
+    
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"mb-util failed: {result.stderr}")
     
     return output_path
 
@@ -87,32 +121,3 @@ def convert_to_pmtiles(
         raise RuntimeError(f"pmtiles convert failed: {result.stderr}")
     
     return output_path
-
-
-def generate_tiles_direct(
-    input_raster: Path,
-    output_dir: Path,
-    min_zoom: int = 10,
-    max_zoom: int = 16,
-) -> Path:
-    """
-    Generate XYZ tile directory (for direct serving or debugging).
-    """
-    input_raster = Path(input_raster)
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    cmd = [
-        "gdal2tiles.py",
-        "-z", f"{min_zoom}-{max_zoom}",
-        "-w", "none",
-        "--xyz",
-        str(input_raster),
-        str(output_dir),
-    ]
-    
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(f"gdal2tiles failed: {result.stderr}")
-    
-    return output_dir

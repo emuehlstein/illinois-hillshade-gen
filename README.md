@@ -1,18 +1,19 @@
-# Illinois Hillshade Generator
+# Illinois Hillshade Generator (ilhmp)
 
 Download Illinois ILHMP elevation data by county and generate styled hillshade tiles for ATAK and offline mapping.
 
 ## Features
 
-- **Download**: Fetch DTM/DSM data from [ISGS ILHMP](https://clearinghouse.isgs.illinois.edu/data/elevation/illinois-height-modernization-ilhmp) by county
+- **Download**: Fetch full 1m resolution DTM/DSM data from [ISGS ILHMP](https://clearinghouse.isgs.illinois.edu/data/elevation/illinois-height-modernization-ilhmp)
 - **Hillshade**: Generate hillshades with configurable exaggeration, lighting, and color schemes
 - **Tile**: Output to MBTiles or PMTiles for offline mapping apps
 - **View**: Built-in local tile viewer with basemap switching
+- **Boundaries**: Extract county boundaries from ISGS shapefile
 
 ## Installation
 
 ```bash
-pip install ilhmp
+pip install -e .
 ```
 
 ### Requirements
@@ -25,27 +26,30 @@ pip install ilhmp
 On macOS with Homebrew:
 ```bash
 brew install gdal
-pip install gdal mbutil
+pip install gdal mbutil numpy
 brew install pmtiles  # optional
 ```
 
 ## Quick Start
 
 ```bash
-# Full pipeline for a county (with viewer)
+# Full pipeline for a county (downloads ~2GB, generates tiles z10-16)
 ilhmp run putnam --dem dtm --style dark --zoom 10-16 --view
 
 # Just download
 ilhmp download putnam --dem dtm --output putnam_dtm.tif
 
 # Generate hillshade from existing DEM
-ilhmp hillshade putnam_dtm.tif --style dark --exaggeration 3
+ilhmp hillshade putnam_dtm.tif --style tactical --exaggeration 3
 
 # Generate tiles
 ilhmp tile putnam_hillshade.tif --zoom 10-16 --format mbtiles
 
 # Launch viewer for existing tiles
 ilhmp view ./putnam-hillshade/tiles --port 9999
+
+# Download county boundary
+ilhmp boundary putnam -o putnam.geojson
 ```
 
 ## Commands
@@ -57,80 +61,86 @@ ilhmp view ./putnam-hillshade/tiles --port 9999
 | `ilhmp hillshade` | Generate styled hillshade from a DEM |
 | `ilhmp tile` | Generate MBTiles/PMTiles from hillshade |
 | `ilhmp view` | Launch local tile viewer |
+| `ilhmp boundary` | Download county boundary as GeoJSON |
 | `ilhmp counties` | List available counties |
 
 ## Color Styles
 
-| Style | Description | Use Case |
-|-------|-------------|----------|
-| `dark` | Blue-gray on dark background | ATAK dark mode |
-| `light` | Warm gray on light background | ATAK light mode |
-| `tactical` | Olive drab | Low-visibility displays |
-| `terrain` | Earth tones | Topographic overlays |
-| `gray` | Pure grayscale | Base for custom coloring |
+| Style | Tint | Background | Use Case |
+|-------|------|------------|----------|
+| `dark` | Blue-gray (77,102,153) | Near-black (18,18,18) | ATAK dark mode |
+| `light` | Warm gray (217,209,199) | Near-white (250,250,250) | ATAK light mode |
+| `tactical` | Olive drab (85,107,47) | Dark olive (24,24,20) | Low-visibility/military |
+| `terrain` | Earth brown (140,120,100) | Cream (245,240,230) | Topographic overlays |
+| `gray` | White (255,255,255) | Black (0,0,0) | Base for custom coloring |
 
-## Viewer
-
-The built-in viewer provides:
-- Hillshade overlay with opacity control
-- Three basemaps: Dark, Light, Satellite
-- Layer toggle
-- Metadata display
-
-![Viewer Screenshot](docs/viewer.png)
-
-Launch with:
-```bash
-ilhmp view ./output/tiles
-# or
-ilhmp run county --view
-```
-
-## Available Counties
-
-```bash
-ilhmp counties --available
-```
-
-See the [ISGS ILHMP page](https://clearinghouse.isgs.illinois.edu/data/elevation/illinois-height-modernization-ilhmp) for full data availability.
-
-## Examples
-
-### Generate tiles for Cook County
-
-```bash
-# Download and process (148GB ZIP, will take a while)
-ilhmp run cook --dem dsm --style dark --zoom 10-16 --pmtiles
-
-# Output: cook-hillshade/cook-hillshade-dark.mbtiles
-#         cook-hillshade/cook-hillshade-dark.pmtiles
-#         cook-hillshade/viewer.html
-```
-
-### Custom color scheme
+### Custom Colors
 
 ```python
 from ilhmp import hillshade
 
 hillshade.generate(
-    "cook_dtm.tif",
-    "cook_custom.tif",
+    "dem.tif",
+    "custom.tif",
     style="custom",
-    custom_tint=(0.4, 0.3, 0.5),  # Purple tint
-    custom_bg=(20, 15, 25),
+    custom_tint=(100, 50, 150),  # Purple
+    custom_bg=(20, 10, 30),
     exaggeration=3.0,
 )
 ```
 
-### Serve existing tiles
+## Data Sources
 
+### Elevation Data
+- **Source:** [ISGS Illinois Height Modernization Program (ILHMP)](https://clearinghouse.isgs.illinois.edu/data/elevation/illinois-height-modernization-ilhmp)
+- **Resolution:** 1m native LiDAR
+- **Format:** ZIP containing ESRI ArcGrid (.adf) or GeoTIFF
+- **Coverage:** Most Illinois counties (check `ilhmp counties --available`)
+
+### County Boundaries
+- **Source:** [ISGS County Boundaries](https://clearinghouse.isgs.illinois.edu/data/reference/illinois-county-boundaries-polygons-and-lines)
+- **File:** `IL_BNDY_County.zip`
+- **Local cache:** `~/.cache/ilhmp/IL_BNDY_County/`
+
+## Viewer
+
+The built-in viewer provides:
+- Hillshade overlay with opacity control
+- Three basemaps: Dark, Light, Satellite (CARTO + ESRI)
+- Real county boundary polygon (not just bounding box)
+- Live zoom level display
+- Layer toggle controls
+
+Launch with:
 ```bash
-# From tiles directory
-ilhmp view ./cook-hillshade/tiles
-
-# From MBTiles
-ilhmp view ./cook-hillshade/cook-dark.mbtiles
+ilhmp view ./tiles --port 9999
+# or
+ilhmp run putnam --view
 ```
+
+## Pipeline Details
+
+1. **Download:** Fetches ZIP from ISGS clearinghouse (~2GB for small counties)
+2. **Extract:** Unzips and converts ESRI ArcGrid to GeoTIFF if needed
+3. **Reproject:** Transforms to EPSG:4326 (WGS84) for web mapping
+4. **Hillshade:** Generates grayscale hillshade with `gdaldem` (z=3, az=315, alt=45)
+5. **Colorize:** Applies style tint with proper alpha channel handling
+6. **Tile:** Creates XYZ tiles with `gdal2tiles.py` (z10-16 recommended)
+7. **Pack:** Bundles into MBTiles/PMTiles for distribution
+
+### Tile Zoom Levels
+
+| Zoom | Ground Resolution | Use Case |
+|------|------------------|----------|
+| z10-12 | ~150-40m | Overview, state-level |
+| z13-14 | ~20-10m | County-level detail |
+| z15-16 | ~5-2.5m | Full 1m LiDAR detail |
+| z17+ | <1.5m | Only if native >1m resolution |
+
+## Tested Counties
+
+- **Putnam** (smallest): 2.4GB ZIP, 5,384 tiles, ~5min pipeline
+- **Cook** (largest): 148GB ZIP, ~500K tiles, ~9hr pipeline
 
 ## License
 
