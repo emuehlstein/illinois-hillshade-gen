@@ -49,6 +49,46 @@ ilhmp download cook --dem dtm --output ./cook_dtm.tif
 
 Downloads the ZIP from the ISGS clearinghouse and extracts/converts the raster. Large counties (Cook ~3.7 GB, Bond ~1.7 GB) can take 10–40 minutes depending on connection speed.
 
+### Use a pre-downloaded ZIP (skip network download)
+
+```bash
+# Extract + convert a local ZIP, then run the full pipeline
+ilhmp run cook --dem dsm --source-zip /Volumes/MAPSTORE/IL/cook_dsm_2022.zip
+
+# Or just extract to a GeoTIFF without running the pipeline
+ilhmp download cook --dem dsm --source-zip /Volumes/MAPSTORE/IL/cook_dsm_2022.zip --output ./cook_dsm.tif
+```
+
+Useful for large counties (Cook DSM is ~148 GB zipped) where the ZIP is already on disk.
+
+### Use an already-extracted GeoTIFF (skip download and extraction)
+
+```bash
+ilhmp run cook --dem dsm --source /Volumes/ssdtmp/cook_dsm.tif
+```
+
+Skips both the download and extraction steps entirely; the provided GeoTIFF is used as-is for reprojection.
+
+### Separate intermediate files from outputs with --cache-dir
+
+```bash
+ilhmp run cook --dem dsm \
+  --cache-dir /Volumes/ssdtmp/cache \
+  --output /Volumes/ssdtmp/output
+```
+
+Intermediate files (`cook_dsm.tif`, `cook_dsm_4326.tif`, `cook_hillshade_dark.tif`) go to the cache dir. Final outputs (tiles, MBTiles, viewer, GeoJSON) go to the output dir. The cache dir can be wiped without losing results.
+
+These flags can be combined:
+
+```bash
+ilhmp run cook --dem dsm \
+  --source-zip /Volumes/MAPSTORE/IL/cook_dsm_2022.zip \
+  --cache-dir /Volumes/ssdtmp/cache \
+  --output /Volumes/ssdtmp/output \
+  --json
+```
+
 ### Generate hillshade from an existing DEM
 
 ```bash

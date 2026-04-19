@@ -59,6 +59,9 @@ def run(
     exaggeration: float = typer.Option(3.0, "--exaggeration", "-z", help="Vertical exaggeration factor"),
     zoom: str = typer.Option("10-16", "--zoom", help="Zoom range (e.g., '10-16')"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
+    cache_dir: Optional[Path] = typer.Option(None, "--cache-dir", help="Directory for intermediate files (raw DEM, reprojected TIF, hillshade). Defaults to output dir."),
+    source_zip: Optional[Path] = typer.Option(None, "--source-zip", help="Use a local ZIP instead of downloading. Still extracts and converts."),
+    source: Optional[Path] = typer.Option(None, "--source", help="Use an existing GeoTIFF directly. Skips download and extraction."),
     pmtiles: bool = typer.Option(False, "--pmtiles", help="Also generate PMTiles output"),
     view: bool = typer.Option(False, "--view", "-v", help="Launch viewer after completion"),
     json_out: bool = typer.Option(False, "--json", help="Output structured JSON instead of Rich text"),
@@ -75,8 +78,22 @@ def run(
             console.print("Run 'ilhmp counties' to list available counties")
         raise typer.Exit(1)
 
+    if source and not source.exists():
+        msg = f"Source file not found: {source}"
+        print(json.dumps({"error": msg})) if json_out else console.print(f"[red]{msg}[/red]")
+        raise typer.Exit(1)
+
+    if source_zip and not source_zip.exists():
+        msg = f"Source ZIP not found: {source_zip}"
+        print(json.dumps({"error": msg})) if json_out else console.print(f"[red]{msg}[/red]")
+        raise typer.Exit(1)
+
     output_dir = output or Path(f"./{county.lower()}-hillshade")
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    intermediates_dir = cache_dir or output_dir
+    if cache_dir:
+        cache_dir.mkdir(parents=True, exist_ok=True)
 
     if not json_out:
         console.print(f"\n[bold]Illinois Hillshade Generator[/bold]")
@@ -84,22 +101,36 @@ def run(
         console.print(f"   DEM: {dem.upper()}")
         console.print(f"   Style: {style}")
         console.print(f"   Zoom: {zoom}")
-        console.print(f"   Output: {output_dir}\n")
-    
-    # Step 1: Download
-    dem_path = output_dir / f"{county.lower()}_{dem.lower()}.tif"
-    if not dem_path.exists():
+        console.print(f"   Output: {output_dir}")
+        if cache_dir:
+            console.print(f"   Cache: {cache_dir}")
+        console.print()
+
+    # Step 1: Acquire DEM
+    dem_path = intermediates_dir / f"{county.lower()}_{dem.lower()}.tif"
+    if source:
+        # Use provided GeoTIFF directly — no download or extraction needed
+        dem_path = source
+        if not json_out:
+            console.print(f"[yellow]⏩[/yellow] Using source: {dem_path}")
+    elif dem_path.exists():
+        if not json_out:
+            console.print(f"[yellow]⏩[/yellow] Using cached: {dem_path}")
+    elif source_zip:
+        if not json_out:
+            console.print("[bold]Step 1/5:[/bold] Extracting from local ZIP...")
+        download.extract_local_zip(source_zip, dem_path)
+        if not json_out:
+            console.print(f"[green]✓[/green] Extracted: {dem_path}")
+    else:
         if not json_out:
             console.print("[bold]Step 1/5:[/bold] Downloading elevation data...")
         download.download_county(county, dem, dem_path)
         if not json_out:
             console.print(f"[green]✓[/green] Downloaded: {dem_path}")
-    else:
-        if not json_out:
-            console.print(f"[yellow]⏩[/yellow] Using cached: {dem_path}")
 
     # Step 2: Reproject to WGS84
-    dem_4326 = output_dir / f"{county.lower()}_{dem.lower()}_4326.tif"
+    dem_4326 = intermediates_dir / f"{county.lower()}_{dem.lower()}_4326.tif"
     if not dem_4326.exists():
         if not json_out:
             console.print("[bold]Step 2/5:[/bold] Reprojecting to WGS84...")
@@ -112,7 +143,7 @@ def run(
             console.print(f"[yellow]⏩[/yellow] Using cached: {dem_4326}")
 
     # Step 3: Hillshade
-    hs_path = output_dir / f"{county.lower()}_hillshade_{style}.tif"
+    hs_path = intermediates_dir / f"{county.lower()}_hillshade_{style}.tif"
     if not hs_path.exists():
         if not json_out:
             console.print(f"[bold]Step 3/5:[/bold] Generating {style} hillshade...")
@@ -222,17 +253,25 @@ def download_cmd(
     county: str = typer.Argument(..., help="County name"),
     dem: str = typer.Option("dtm", "--dem", "-d", help="DEM type: dtm or dsm"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output path"),
+    source_zip: Optional[Path] = typer.Option(None, "--source-zip", help="Use a local ZIP instead of downloading from ISGS."),
 ):
-    """Download elevation data for a county (full 1m resolution)."""
+    """Download (or extract) elevation data for a county (full 1m resolution)."""
     county_info = counties.get_county(county)
     if not county_info:
         console.print(f"[red]Unknown county: {county}[/red]")
         raise typer.Exit(1)
-    
+
     output_path = output or Path(f"./{county.lower()}_{dem.lower()}.tif")
-    
-    console.print(f"[bold]Downloading {county_info['name']} {dem.upper()}...[/bold]")
-    download.download_county(county, dem, output_path)
+
+    if source_zip:
+        if not source_zip.exists():
+            console.print(f"[red]Source ZIP not found: {source_zip}[/red]")
+            raise typer.Exit(1)
+        console.print(f"[bold]Extracting {county_info['name']} {dem.upper()} from local ZIP...[/bold]")
+        download.extract_local_zip(source_zip, output_path)
+    else:
+        console.print(f"[bold]Downloading {county_info['name']} {dem.upper()}...[/bold]")
+        download.download_county(county, dem, output_path)
     console.print(f"[green]✓[/green] Saved: {output_path}")
 
 

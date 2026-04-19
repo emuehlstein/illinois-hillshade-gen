@@ -23,27 +23,107 @@ def download_county(
 ) -> Path:
     """
     Download elevation data for a county.
-    
+
     Always downloads the full 1m resolution ZIP from ISGS clearinghouse.
-    
+
     Args:
         county: County name (e.g., 'putnam', 'cook')
         dem_type: 'dtm' (bare earth) or 'dsm' (with buildings/trees)
         output_path: Output GeoTIFF path
         bounds: Optional (minlon, minlat, maxlon, maxlat) to clip after download
-    
+
     Returns:
         Path to the output GeoTIFF
     """
     county_info = counties.get_county(county)
     if not county_info:
         raise ValueError(f"Unknown county: {county}")
-    
+
     output_path = output_path or Path(f"./{county.lower()}_{dem_type.lower()}.tif")
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     return _download_zip(county_info, dem_type, output_path, bounds)
+
+
+def extract_local_zip(
+    zip_path: Path,
+    output_path: Path,
+    bounds: Optional[Tuple[float, float, float, float]] = None,
+) -> Path:
+    """
+    Extract and convert a locally downloaded ZIP to GeoTIFF.
+
+    Skips the network download step entirely; otherwise identical to the
+    internal _download_zip pipeline (unpack → find raster → gdal_translate).
+
+    Args:
+        zip_path: Path to an existing ZIP file on disk
+        output_path: Destination GeoTIFF path
+        bounds: Optional (minlon, minlat, maxlon, maxlat) to clip after conversion
+
+    Returns:
+        Path to the output GeoTIFF
+    """
+    zip_path = Path(zip_path)
+    output_path = Path(output_path)
+    if not zip_path.exists():
+        raise FileNotFoundError(f"ZIP not found: {zip_path}")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_dir = Path(tmp_dir)
+        extract_dir = tmp_dir / "extracted"
+
+        print(f"Extracting {zip_path}...")
+        shutil.unpack_archive(str(zip_path), extract_dir)
+
+        raster_path = _find_raster(extract_dir)
+        if not raster_path:
+            raise ValueError(f"No raster data found in ZIP: {zip_path}")
+
+        print(f"Found raster: {raster_path}")
+
+        print("Converting to GeoTIFF...")
+        if raster_path.suffix.lower() in [".tif", ".tiff"]:
+            cmd = [
+                "gdal_translate",
+                "-co", "COMPRESS=DEFLATE",
+                "-co", "TILED=YES",
+                "-co", "BIGTIFF=IF_SAFER",
+            ]
+        else:
+            cmd = [
+                "gdal_translate",
+                "-of", "GTiff",
+                "-co", "COMPRESS=DEFLATE",
+                "-co", "TILED=YES",
+                "-co", "BIGTIFF=IF_SAFER",
+            ]
+
+        cmd.extend([str(raster_path), str(output_path)])
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"gdal_translate failed: {result.stderr}")
+
+        if bounds:
+            print(f"Clipping to bounds: {bounds}")
+            clipped = output_path.with_suffix(".clipped.tif")
+            cmd = [
+                "gdalwarp",
+                "-te", str(bounds[0]), str(bounds[1]), str(bounds[2]), str(bounds[3]),
+                "-co", "COMPRESS=DEFLATE",
+                "-co", "TILED=YES",
+                str(output_path),
+                str(clipped),
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(f"gdalwarp clip failed: {result.stderr}")
+            clipped.replace(output_path)
+
+    print(f"✓ Saved: {output_path}")
+    return output_path
 
 
 def _download_zip(
