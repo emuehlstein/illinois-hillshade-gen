@@ -163,3 +163,8 @@ def get_zip_url(county: str, dem_type: str = "dtm") -> Optional[str]:
         return None
     key = f"{dem_type.lower()}_url"
     return info.get(key)
+
+
+# County boundaries source
+BOUNDARIES_URL = "https://clearinghouse.isgs.illinois.edu/sites/clearinghouse.isgs/files/data/IL_BNDY_County.zip"
+BOUNDARIES_SOURCE = "https://clearinghouse.isgs.illinois.edu/data/reference/illinois-county-boundaries-polygons-and-lines"

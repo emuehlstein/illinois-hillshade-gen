@@ -7,11 +7,9 @@ import json
 import os
 import socketserver
 import sqlite3
-import threading
 import webbrowser
 from pathlib import Path
-from typing import Optional
-from string import Template
+from typing import Optional, Tuple
 
 
 def generate_viewer_html(
@@ -26,12 +24,18 @@ def generate_viewer_html(
     center_lat: float = 41.0,
     center_lon: float = -89.0,
     tile_format: str = "tiles",
+    bounds: Optional[Tuple[float, float, float, float]] = None,
+    geojson_path: Optional[str] = None,
 ) -> Path:
     """Generate a viewer HTML file for the tiles."""
     template_path = Path(__file__).parent / "templates" / "viewer.html"
     
     with open(template_path, 'r') as f:
         template = f.read()
+    
+    # Default bounds from center (rough estimate)
+    if not bounds:
+        bounds = (center_lon - 0.2, center_lat - 0.15, center_lon + 0.2, center_lat + 0.15)
     
     # Simple template substitution
     html = template.replace("{{title}}", f"{county_name} Hillshade Viewer")
@@ -46,6 +50,8 @@ def generate_viewer_html(
     html = html.replace("{{initial_zoom}}", str(min_zoom + 1))
     html = html.replace("{{tiles_path}}", tiles_path)
     html = html.replace("{{format}}", tile_format)
+    html = html.replace("{{bounds_json}}", json.dumps(list(bounds)))
+    html = html.replace("{{geojson_path}}", geojson_path or "")
     
     output_path = Path(output_path)
     with open(output_path, 'w') as f:
@@ -60,7 +66,6 @@ class MBTilesHandler(http.server.SimpleHTTPRequestHandler):
     mbtiles_path: Optional[Path] = None
     
     def do_GET(self):
-        # Check if this is a tile request
         if self.path.startswith('/tiles/') and self.mbtiles_path:
             self.serve_mbtiles_tile()
         else:
@@ -69,11 +74,8 @@ class MBTilesHandler(http.server.SimpleHTTPRequestHandler):
     def serve_mbtiles_tile(self):
         """Serve a tile from the MBTiles database."""
         try:
-            # Parse /tiles/{z}/{x}/{y}.png
             parts = self.path.replace('/tiles/', '').replace('.png', '').split('/')
             z, x, y = int(parts[0]), int(parts[1]), int(parts[2])
-            
-            # MBTiles uses TMS (flip Y)
             y_tms = (2 ** z - 1) - y
             
             conn = sqlite3.connect(str(self.mbtiles_path))
@@ -97,7 +99,6 @@ class MBTilesHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(500, str(e))
     
     def log_message(self, format, *args):
-        # Quieter logging
         pass
 
 
@@ -106,27 +107,16 @@ def serve_tiles(
     port: int = 9999,
     open_browser: bool = True,
 ) -> None:
-    """
-    Start a local HTTP server to preview tiles.
-    
-    Args:
-        tiles_path: Path to tiles directory or .mbtiles file
-        port: HTTP port
-        open_browser: Whether to open the viewer in browser
-    """
+    """Start a local HTTP server to preview tiles."""
     tiles_path = Path(tiles_path)
     
     if tiles_path.suffix == '.mbtiles':
-        # Serve from MBTiles
         serve_dir = tiles_path.parent
         MBTilesHandler.mbtiles_path = tiles_path
         handler = MBTilesHandler
-        tiles_url = '/tiles'
     else:
-        # Serve from directory
         serve_dir = tiles_path.parent
         handler = http.server.SimpleHTTPRequestHandler
-        tiles_url = f'/{tiles_path.name}'
     
     os.chdir(serve_dir)
     

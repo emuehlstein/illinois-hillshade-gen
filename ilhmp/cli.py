@@ -238,3 +238,22 @@ def list_counties(
 
 if __name__ == "__main__":
     app()
+
+
+@app.command("boundary")
+def boundary_cmd(
+    county: str = typer.Argument(..., help="County name"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output GeoJSON path"),
+    all_counties: bool = typer.Option(False, "--all", "-a", help="Download all counties"),
+):
+    """Download county boundary as GeoJSON."""
+    from . import boundaries
+    
+    if all_counties:
+        with console.status("[bold green]Downloading all Illinois county boundaries..."):
+            path = boundaries.get_all_counties_geojson(output)
+        console.print(f"[green]✓[/green] Saved: {path}")
+    else:
+        with console.status(f"[bold green]Downloading {county} county boundary..."):
+            path = boundaries.get_county_geojson(county, output)
+        console.print(f"[green]✓[/green] Saved: {path}")

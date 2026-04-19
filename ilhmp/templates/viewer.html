@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/pmtiles@3.0.3/dist/pmtiles.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
@@ -37,6 +36,11 @@
         }
         .info-panel .label { color: #999; }
         .info-panel .value { color: #fff; font-weight: 500; }
+        .info-panel .zoom-value { 
+            color: #4da6ff; 
+            font-weight: 700;
+            font-size: 15px;
+        }
         
         .layer-control {
             position: absolute;
@@ -92,13 +96,18 @@
         <div class="row"><span class="label">Style:</span><span class="value">{{style}}</span></div>
         <div class="row"><span class="label">DEM:</span><span class="value">{{dem_type}}</span></div>
         <div class="row"><span class="label">Z-factor:</span><span class="value">{{exaggeration}}x</span></div>
-        <div class="row"><span class="label">Zoom:</span><span class="value">{{min_zoom}}-{{max_zoom}}</span></div>
+        <div class="row"><span class="label">Tile range:</span><span class="value">z{{min_zoom}}-{{max_zoom}}</span></div>
+        <div class="row"><span class="label">Current zoom:</span><span class="value zoom-value" id="zoom-display">—</span></div>
     </div>
     
     <div class="layer-control">
         <label>
             <input type="checkbox" id="hillshade-toggle" checked>
             Hillshade Overlay
+        </label>
+        <label>
+            <input type="checkbox" id="boundary-toggle" checked>
+            County Boundary
         </label>
         <label>
             Opacity: <input type="range" id="opacity-slider" min="0" max="100" value="80">
@@ -119,11 +128,22 @@
             minZoom: {{min_zoom}},
             maxZoom: {{max_zoom}},
             tilesPath: '{{tiles_path}}',
-            format: '{{format}}'
+            format: '{{format}}',
+            bounds: {{bounds_json}},
+            geojsonPath: '{{geojson_path}}'
         };
         
         // Initialize map
         const map = L.map('map').setView(config.center, config.zoom);
+        
+        // Zoom display
+        const zoomDisplay = document.getElementById('zoom-display');
+        function updateZoomDisplay() {
+            zoomDisplay.textContent = 'z' + map.getZoom().toFixed(1);
+        }
+        map.on('zoomend', updateZoomDisplay);
+        map.on('zoom', updateZoomDisplay);
+        updateZoomDisplay();
         
         // Basemaps
         const basemaps = {
@@ -144,11 +164,55 @@
         let currentBasemap = basemaps.dark;
         currentBasemap.addTo(map);
         
+        // County boundary - try GeoJSON first, fall back to bbox
+        let boundaryLayer = null;
+        
+        async function loadBoundary() {
+            if (config.geojsonPath) {
+                try {
+                    const response = await fetch(config.geojsonPath);
+                    if (response.ok) {
+                        const geojson = await response.json();
+                        boundaryLayer = L.geoJSON(geojson, {
+                            style: {
+                                color: '#ff6b6b',
+                                weight: 3,
+                                fill: false,
+                                dashArray: '8, 4',
+                                opacity: 0.9
+                            }
+                        });
+                        boundaryLayer.addTo(map);
+                        map.fitBounds(boundaryLayer.getBounds(), { padding: [20, 20] });
+                        return;
+                    }
+                } catch (e) {
+                    console.log('GeoJSON not found, using bbox');
+                }
+            }
+            
+            // Fallback to bounding box
+            const bounds = config.bounds;
+            boundaryLayer = L.rectangle(
+                [[bounds[1], bounds[0]], [bounds[3], bounds[2]]],
+                {
+                    color: '#ff6b6b',
+                    weight: 3,
+                    fill: false,
+                    dashArray: '8, 4',
+                    opacity: 0.9
+                }
+            );
+            boundaryLayer.addTo(map);
+            map.fitBounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]], { padding: [20, 20] });
+        }
+        
+        loadBoundary();
+        
         // Hillshade layer
         let hillshadeLayer;
         
         if (config.format === 'tiles') {
-            // XYZ tiles directory
             hillshadeLayer = L.tileLayer(config.tilesPath + '/{z}/{x}/{y}.png', {
                 attribution: 'ISGS ILHMP',
                 opacity: 0.8,
@@ -157,7 +221,6 @@
                 tms: false
             });
         } else if (config.format === 'mbtiles') {
-            // For MBTiles, we serve via the local server
             hillshadeLayer = L.tileLayer(config.tilesPath + '/{z}/{x}/{y}.png', {
                 attribution: 'ISGS ILHMP',
                 opacity: 0.8,
@@ -176,6 +239,16 @@
                 hillshadeLayer.addTo(map);
             } else {
                 map.removeLayer(hillshadeLayer);
+            }
+        });
+        
+        document.getElementById('boundary-toggle').addEventListener('change', (e) => {
+            if (boundaryLayer) {
+                if (e.target.checked) {
+                    boundaryLayer.addTo(map);
+                } else {
+                    map.removeLayer(boundaryLayer);
+                }
             }
         });
         
