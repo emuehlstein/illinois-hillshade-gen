@@ -10,6 +10,7 @@ Usage:
     ilhmp boundary putnam -o putnam.geojson
 """
 
+import json
 import subprocess
 import typer
 from typing import Optional
@@ -24,6 +25,12 @@ app = typer.Typer(
     add_completion=False,
 )
 console = Console()
+
+
+class _nullctx:
+    """No-op context manager used to skip Rich status spinners in JSON mode."""
+    def __enter__(self): return self
+    def __exit__(self, *_): pass
 
 
 def reproject_to_4326(input_path: Path, output_path: Path) -> Path:
@@ -54,67 +61,84 @@ def run(
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
     pmtiles: bool = typer.Option(False, "--pmtiles", help="Also generate PMTiles output"),
     view: bool = typer.Option(False, "--view", "-v", help="Launch viewer after completion"),
+    json_out: bool = typer.Option(False, "--json", help="Output structured JSON instead of Rich text"),
 ):
     """
     Full pipeline: download → reproject → hillshade → tile for a county.
     """
     county_info = counties.get_county(county)
     if not county_info:
-        console.print(f"[red]Unknown county: {county}[/red]")
-        console.print("Run 'ilhmp counties' to list available counties")
+        if json_out:
+            print(json.dumps({"error": f"Unknown county: {county}"}))
+        else:
+            console.print(f"[red]Unknown county: {county}[/red]")
+            console.print("Run 'ilhmp counties' to list available counties")
         raise typer.Exit(1)
-    
+
     output_dir = output or Path(f"./{county.lower()}-hillshade")
     output_dir.mkdir(parents=True, exist_ok=True)
-    
-    console.print(f"\n[bold]🗺️  Illinois Hillshade Generator[/bold]")
-    console.print(f"   County: {county_info['name']}")
-    console.print(f"   DEM: {dem.upper()}")
-    console.print(f"   Style: {style}")
-    console.print(f"   Zoom: {zoom}")
-    console.print(f"   Output: {output_dir}\n")
+
+    if not json_out:
+        console.print(f"\n[bold]Illinois Hillshade Generator[/bold]")
+        console.print(f"   County: {county_info['name']}")
+        console.print(f"   DEM: {dem.upper()}")
+        console.print(f"   Style: {style}")
+        console.print(f"   Zoom: {zoom}")
+        console.print(f"   Output: {output_dir}\n")
     
     # Step 1: Download
     dem_path = output_dir / f"{county.lower()}_{dem.lower()}.tif"
     if not dem_path.exists():
-        console.print("[bold]Step 1/5:[/bold] Downloading elevation data...")
+        if not json_out:
+            console.print("[bold]Step 1/5:[/bold] Downloading elevation data...")
         download.download_county(county, dem, dem_path)
-        console.print(f"[green]✓[/green] Downloaded: {dem_path}")
+        if not json_out:
+            console.print(f"[green]✓[/green] Downloaded: {dem_path}")
     else:
-        console.print(f"[yellow]⏩[/yellow] Using cached: {dem_path}")
-    
+        if not json_out:
+            console.print(f"[yellow]⏩[/yellow] Using cached: {dem_path}")
+
     # Step 2: Reproject to WGS84
     dem_4326 = output_dir / f"{county.lower()}_{dem.lower()}_4326.tif"
     if not dem_4326.exists():
-        console.print("[bold]Step 2/5:[/bold] Reprojecting to WGS84...")
-        with console.status("[green]Reprojecting..."):
+        if not json_out:
+            console.print("[bold]Step 2/5:[/bold] Reprojecting to WGS84...")
+        with console.status("[green]Reprojecting...") if not json_out else _nullctx():
             reproject_to_4326(dem_path, dem_4326)
-        console.print(f"[green]✓[/green] Reprojected: {dem_4326}")
+        if not json_out:
+            console.print(f"[green]✓[/green] Reprojected: {dem_4326}")
     else:
-        console.print(f"[yellow]⏩[/yellow] Using cached: {dem_4326}")
-    
+        if not json_out:
+            console.print(f"[yellow]⏩[/yellow] Using cached: {dem_4326}")
+
     # Step 3: Hillshade
     hs_path = output_dir / f"{county.lower()}_hillshade_{style}.tif"
     if not hs_path.exists():
-        console.print(f"[bold]Step 3/5:[/bold] Generating {style} hillshade...")
-        with console.status(f"[green]Generating hillshade..."):
+        if not json_out:
+            console.print(f"[bold]Step 3/5:[/bold] Generating {style} hillshade...")
+        with console.status("[green]Generating hillshade...") if not json_out else _nullctx():
             hillshade.generate(dem_4326, hs_path, style=style, exaggeration=exaggeration)
-        console.print(f"[green]✓[/green] Hillshade: {hs_path}")
+        if not json_out:
+            console.print(f"[green]✓[/green] Hillshade: {hs_path}")
     else:
-        console.print(f"[yellow]⏩[/yellow] Using cached: {hs_path}")
-    
+        if not json_out:
+            console.print(f"[yellow]⏩[/yellow] Using cached: {hs_path}")
+
     # Step 4: Generate tiles
     min_zoom, max_zoom = map(int, zoom.split("-"))
     tiles_dir = output_dir / f"tiles_{style}"
-    
-    console.print(f"[bold]Step 4/5:[/bold] Generating tiles z{min_zoom}-{max_zoom}...")
-    with console.status("[green]Generating tiles..."):
+
+    if not json_out:
+        console.print(f"[bold]Step 4/5:[/bold] Generating tiles z{min_zoom}-{max_zoom}...")
+    with console.status("[green]Generating tiles...") if not json_out else _nullctx():
         tile.generate_tiles_direct(hs_path, tiles_dir, min_zoom, max_zoom)
-    console.print(f"[green]✓[/green] Tiles: {tiles_dir}")
-    
+    if not json_out:
+        console.print(f"[green]✓[/green] Tiles: {tiles_dir}")
+
     # Step 5: Generate viewer
-    console.print("[bold]Step 5/5:[/bold] Creating viewer...")
-    
+    if not json_out:
+        console.print("[bold]Step 5/5:[/bold] Creating viewer...")
+
     # Try to get/generate boundary
     try:
         from . import boundaries
@@ -124,11 +148,11 @@ def run(
         geojson_path = f"{county.lower()}.geojson"
     except Exception:
         geojson_path = None
-    
+
     bounds = county_info.get("bounds", (-89.5, 40.0, -88.0, 42.5))
     center_lon = (bounds[0] + bounds[2]) / 2
     center_lat = (bounds[1] + bounds[3]) / 2
-    
+
     viewer_path = viewer.generate_viewer_html(
         output_dir / "viewer.html",
         tiles_path=f"tiles_{style}",
@@ -144,28 +168,52 @@ def run(
         bounds=bounds,
         geojson_path=geojson_path,
     )
-    console.print(f"[green]✓[/green] Viewer: {viewer_path}")
-    
-    # Optional: MBTiles
-    if pmtiles or True:  # Always generate mbtiles for now
-        mbtiles_path = output_dir / f"{county.lower()}-hillshade-{style}.mbtiles"
+    if not json_out:
+        console.print(f"[green]✓[/green] Viewer: {viewer_path}")
+
+    # MBTiles (always generated)
+    mbtiles_path = output_dir / f"{county.lower()}-hillshade-{style}.mbtiles"
+    if not json_out:
         console.print(f"[dim]Packing MBTiles...[/dim]")
-        with console.status("[green]Packing MBTiles..."):
-            tile.generate_mbtiles_from_dir(tiles_dir, mbtiles_path)
+    with console.status("[green]Packing MBTiles...") if not json_out else _nullctx():
+        tile.generate_mbtiles_from_dir(tiles_dir, mbtiles_path)
+    if not json_out:
         console.print(f"[green]✓[/green] MBTiles: {mbtiles_path}")
-    
+
+    pmtiles_path = None
     if pmtiles:
         pmtiles_path = output_dir / f"{county.lower()}-hillshade-{style}.pmtiles"
-        with console.status("[green]Converting to PMTiles..."):
+        with console.status("[green]Converting to PMTiles...") if not json_out else _nullctx():
             tile.convert_to_pmtiles(mbtiles_path, pmtiles_path)
-        console.print(f"[green]✓[/green] PMTiles: {pmtiles_path}")
-    
-    console.print(f"\n[bold green]✅ Complete![/bold green]")
-    console.print(f"   Tiles: {tiles_dir}")
-    console.print(f"   Viewer: {viewer_path}")
-    
+        if not json_out:
+            console.print(f"[green]✓[/green] PMTiles: {pmtiles_path}")
+
+    if json_out:
+        result = {
+            "county": county_info["name"],
+            "dem": dem.upper(),
+            "style": style,
+            "output_dir": str(output_dir.resolve()),
+            "files": {
+                "dem": str(dem_path.resolve()),
+                "dem_4326": str(dem_4326.resolve()),
+                "hillshade": str(hs_path.resolve()),
+                "tiles_dir": str(tiles_dir.resolve()),
+                "mbtiles": str(mbtiles_path.resolve()),
+                "viewer": str(viewer_path.resolve()),
+                "geojson": str((output_dir / geojson_path).resolve()) if geojson_path else None,
+                "pmtiles": str(pmtiles_path.resolve()) if pmtiles_path else None,
+            },
+        }
+        print(json.dumps(result, indent=2))
+    else:
+        console.print(f"\n[bold green]Complete![/bold green]")
+        console.print(f"   Tiles: {tiles_dir}")
+        console.print(f"   Viewer: {viewer_path}")
+
     if view:
-        console.print(f"\n[bold]Launching viewer...[/bold]")
+        if not json_out:
+            console.print(f"\n[bold]Launching viewer...[/bold]")
         viewer.serve_tiles(tiles_dir, port=9999)
 
 
@@ -265,48 +313,78 @@ def boundary_cmd(
     county: str = typer.Argument(..., help="County name"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output GeoJSON path"),
     all_counties: bool = typer.Option(False, "--all", "-a", help="Download all counties"),
+    json_out: bool = typer.Option(False, "--json", help="Output structured JSON instead of Rich text"),
 ):
     """Download county boundary as GeoJSON."""
     from . import boundaries
-    
+
     if all_counties:
-        console.print("[bold]Downloading all Illinois county boundaries...[/bold]")
-        with console.status("[green]Processing..."):
+        if not json_out:
+            console.print("[bold]Downloading all Illinois county boundaries...[/bold]")
+        with console.status("[green]Processing...") if not json_out else _nullctx():
             path = boundaries.get_all_counties_geojson(output)
-        console.print(f"[green]✓[/green] Saved: {path}")
+        if json_out:
+            print(json.dumps({"geojson": str(Path(path).resolve())}))
+        else:
+            console.print(f"[green]✓[/green] Saved: {path}")
     else:
-        console.print(f"[bold]Downloading {county} county boundary...[/bold]")
-        with console.status("[green]Processing..."):
+        if not json_out:
+            console.print(f"[bold]Downloading {county} county boundary...[/bold]")
+        with console.status("[green]Processing...") if not json_out else _nullctx():
             path = boundaries.get_county_geojson(county, output)
-        console.print(f"[green]✓[/green] Saved: {path}")
+        if json_out:
+            print(json.dumps({"county": county, "geojson": str(Path(path).resolve())}))
+        else:
+            console.print(f"[green]✓[/green] Saved: {path}")
 
 
 @app.command("counties")
 def list_counties(
     available: bool = typer.Option(False, "--available", "-a", help="Only show counties with data"),
+    json_out: bool = typer.Option(False, "--json", help="Output structured JSON instead of a Rich table"),
 ):
-    """List Illinois counties."""
-    from rich.table import Table
-    
-    table = Table(title="Illinois Counties with ILHMP Data")
-    table.add_column("County", style="cyan")
-    table.add_column("FIPS", style="dim")
-    table.add_column("DTM", style="green")
-    table.add_column("DSM", style="green")
-    table.add_column("Year")
-    
-    for county in counties.list_all():
-        if available and not (county.get("dtm_url") or county.get("dsm_url")):
-            continue
-        table.add_row(
-            county["name"],
-            county["fips"],
-            "✓" if county.get("dtm_url") else "—",
-            "✓" if county.get("dsm_url") else "—",
-            county.get("year", "—"),
-        )
-    
-    console.print(table)
+    """List Illinois counties with ILHMP data availability."""
+    all_counties = counties.list_all()
+    if available:
+        all_counties = [c for c in all_counties if c.get("dtm_url") or c.get("dsm_url")]
+
+    if json_out:
+        # Emit full catalog as JSON array
+        output = []
+        for county in all_counties:
+            output.append({
+                "id": county["id"],
+                "name": county["name"],
+                "fips": county["fips"],
+                "district": county["district"],
+                "year": county.get("year"),
+                "dtm_url": county.get("dtm_url"),
+                "dsm_url": county.get("dsm_url"),
+                "dtm_imageserver_url": county.get("dtm_imageserver_url"),
+                "dsm_imageserver_url": county.get("dsm_imageserver_url"),
+                "bounds": county.get("bounds"),
+            })
+        print(json.dumps(output, indent=2))
+    else:
+        from rich.table import Table
+
+        table = Table(title="Illinois Counties with ILHMP Data")
+        table.add_column("County", style="cyan")
+        table.add_column("FIPS", style="dim")
+        table.add_column("DTM", style="green")
+        table.add_column("DSM", style="green")
+        table.add_column("Year")
+
+        for county in all_counties:
+            table.add_row(
+                county["name"],
+                county["fips"],
+                "✓" if county.get("dtm_url") else "—",
+                "✓" if county.get("dsm_url") else "—",
+                county.get("year", "—"),
+            )
+
+        console.print(table)
 
 
 if __name__ == "__main__":

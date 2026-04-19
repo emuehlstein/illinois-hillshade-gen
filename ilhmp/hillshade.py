@@ -129,46 +129,52 @@ def _apply_color_tint(
     output_path: Path,
     tint: Tuple[int, int, int],
     bg: Tuple[int, int, int],
+    chunk_size: int = 1000,
 ) -> None:
     """
-    Apply color tint to grayscale hillshade.
-    
-    Uses numpy for correct alpha channel handling.
-    Hillshade value 0 = nodata (transparent), 1-255 = valid data.
+    Apply color tint to grayscale hillshade, processing in row chunks.
+
+    Processes chunk_size rows at a time to avoid OOM on large counties
+    (e.g. Cook ~3.7B pixels, Bond ~1.7B pixels).
+
+    tint/bg are RGB tuples (0-255 integers).
+    Alpha: 255 where hillshade > 0, 0 for nodata.
     """
     src = gdal.Open(str(input_gray))
-    hs = src.GetRasterBand(1).ReadAsArray().astype(np.float32)
-    
-    # Normalize hillshade 0-255 -> 0-1
-    hs_norm = hs / 255.0
-    
-    # Calculate RGB: interpolate from bg to tint based on hillshade
-    bg_arr = np.array(bg, dtype=np.float32)
-    tint_arr = np.array(tint, dtype=np.float32)
-    
-    r = (bg_arr[0] + hs_norm * (tint_arr[0] - bg_arr[0])).astype(np.uint8)
-    g = (bg_arr[1] + hs_norm * (tint_arr[1] - bg_arr[1])).astype(np.uint8)
-    b = (bg_arr[2] + hs_norm * (tint_arr[2] - bg_arr[2])).astype(np.uint8)
-    
-    # Alpha: 255 where hillshade > 0, 0 where nodata
-    alpha = np.where(hs > 0, 255, 0).astype(np.uint8)
-    
-    # Write RGBA output
+    width = src.RasterXSize
+    height = src.RasterYSize
+    band = src.GetRasterBand(1)
+
     driver = gdal.GetDriverByName('GTiff')
     out = driver.Create(
         str(output_path),
-        src.RasterXSize,
-        src.RasterYSize,
+        width,
+        height,
         4,  # RGBA
         gdal.GDT_Byte,
         options=['COMPRESS=DEFLATE', 'TILED=YES', 'BIGTIFF=IF_SAFER']
     )
     out.SetGeoTransform(src.GetGeoTransform())
     out.SetProjection(src.GetProjection())
-    out.GetRasterBand(1).WriteArray(r)
-    out.GetRasterBand(2).WriteArray(g)
-    out.GetRasterBand(3).WriteArray(b)
-    out.GetRasterBand(4).WriteArray(alpha)
+
+    bg_arr = np.array(bg, dtype=np.float32)
+    tint_arr = np.array(tint, dtype=np.float32)
+
+    for row_off in range(0, height, chunk_size):
+        rows = min(chunk_size, height - row_off)
+        hs = band.ReadAsArray(0, row_off, width, rows).astype(np.float32)
+        hs_norm = hs / 255.0
+
+        r = (bg_arr[0] + hs_norm * (tint_arr[0] - bg_arr[0])).astype(np.uint8)
+        g = (bg_arr[1] + hs_norm * (tint_arr[1] - bg_arr[1])).astype(np.uint8)
+        b = (bg_arr[2] + hs_norm * (tint_arr[2] - bg_arr[2])).astype(np.uint8)
+        alpha = np.where(hs > 0, 255, 0).astype(np.uint8)
+
+        out.GetRasterBand(1).WriteArray(r, 0, row_off)
+        out.GetRasterBand(2).WriteArray(g, 0, row_off)
+        out.GetRasterBand(3).WriteArray(b, 0, row_off)
+        out.GetRasterBand(4).WriteArray(alpha, 0, row_off)
+
     out.FlushCache()
     out = None
     src = None
