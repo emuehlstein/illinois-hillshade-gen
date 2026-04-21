@@ -20,6 +20,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gdal = [
+    "GDAL",
+]
 dev = [
     "pytest>=7.0.0",
 ]

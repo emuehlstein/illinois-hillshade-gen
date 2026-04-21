@@ -19,15 +19,41 @@ pip install -e .
 ### Requirements
 
 - Python 3.10+
-- GDAL (with Python bindings)
+- GDAL CLI tools (`gdaldem`, `gdal_calc.py`, `gdal_merge.py`, `gdalwarp`, `gdal_translate`)
 - mb-util (`pip install mbutil`)
 - pmtiles CLI (optional, for PMTiles output)
 
-On macOS with Homebrew:
+#### GDAL Python bindings (optional but recommended)
+
+The hillshade colorization step can use GDAL Python bindings for faster, memory-efficient streaming. If the bindings aren't installed, it falls back to CLI tools (`gdal_calc.py` + `gdal_merge.py`) which work fine but use more disk I/O.
+
+```bash
+# Install with GDAL Python bindings
+pip install -e ".[gdal]"
+
+# Or without (uses CLI fallback)
+pip install -e .
+```
+
+#### macOS (Homebrew)
 ```bash
 brew install gdal
 pip install gdal mbutil numpy
 brew install pmtiles  # optional
+```
+
+#### Ubuntu/Debian (including EC2)
+```bash
+sudo apt-get install gdal-bin libgdal-dev python3-gdal
+pip install mbutil numpy
+# GDAL Python bindings come from python3-gdal system package
+```
+
+#### Headless / CI / AWS
+```bash
+apt-get install -y gdal-bin python3-gdal
+pip install git+https://github.com/emuehlstein/illinois-hillshade-gen.git
+# Works without GDAL pip package — falls back to CLI tools
 ```
 
 ## Quick Start
