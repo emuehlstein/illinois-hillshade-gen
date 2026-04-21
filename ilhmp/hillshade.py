@@ -15,9 +15,13 @@ from pathlib import Path
 from typing import Optional, Tuple, Dict
 
 import numpy as np
-from osgeo import gdal
 
-gdal.UseExceptions()
+try:
+    from osgeo import gdal
+    gdal.UseExceptions()
+    HAS_GDAL_PYTHON = True
+except ImportError:
+    HAS_GDAL_PYTHON = False
 
 # Color presets: (tint RGB 0-255, background RGB 0-255)
 STYLES: Dict[str, Dict] = {
@@ -139,7 +143,25 @@ def _apply_color_tint(
 
     tint/bg are RGB tuples (0-255 integers).
     Alpha: 255 where hillshade > 0, 0 for nodata.
+
+    Uses GDAL Python bindings when available (faster, streaming).
+    Falls back to a subprocess pipeline using gdal_calc.py + gdal_merge.py
+    when bindings are not installed.
     """
+    if HAS_GDAL_PYTHON:
+        _apply_color_tint_gdal(input_gray, output_path, tint, bg, chunk_size)
+    else:
+        _apply_color_tint_subprocess(input_gray, output_path, tint, bg)
+
+
+def _apply_color_tint_gdal(
+    input_gray: Path,
+    output_path: Path,
+    tint: Tuple[int, int, int],
+    bg: Tuple[int, int, int],
+    chunk_size: int = 1000,
+) -> None:
+    """Apply color tint using GDAL Python bindings (streaming, memory-efficient)."""
     src = gdal.Open(str(input_gray))
     width = src.RasterXSize
     height = src.RasterYSize
@@ -178,6 +200,88 @@ def _apply_color_tint(
     out.FlushCache()
     out = None
     src = None
+
+
+def _apply_color_tint_subprocess(
+    input_gray: Path,
+    output_path: Path,
+    tint: Tuple[int, int, int],
+    bg: Tuple[int, int, int],
+) -> None:
+    """
+    Apply color tint using only GDAL CLI tools (no Python bindings required).
+
+    Uses gdal_calc.py to compute each RGBA band as a linear blend:
+        channel = bg + (A / 255.0) * (tint - bg)
+        alpha   = where(A > 0, 255, 0)
+
+    Then merges bands into a single RGBA GeoTIFF via gdal_merge.py.
+    """
+    tmp_dir = Path(tempfile.mkdtemp(prefix="ilhmp_tint_"))
+
+    try:
+        # Compute each band with gdal_calc.py
+        band_files = []
+        for i, (ch_name, t_val, b_val) in enumerate([
+            ("R", tint[0], bg[0]),
+            ("G", tint[1], bg[1]),
+            ("B", tint[2], bg[2]),
+        ]):
+            out_band = tmp_dir / f"band_{ch_name}.tif"
+            band_files.append(out_band)
+
+            # Formula: bg + (A / 255.0) * (tint - bg), clamped to uint8
+            calc_expr = f"{b_val} + (A / 255.0) * ({t_val} - {b_val})"
+            cmd = [
+                "gdal_calc.py",
+                "-A", str(input_gray),
+                f"--calc={calc_expr}",
+                f"--outfile={out_band}",
+                "--type=Byte",
+                "--co=COMPRESS=DEFLATE",
+                "--co=TILED=YES",
+                "--co=BIGTIFF=IF_SAFER",
+                "--quiet",
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(f"gdal_calc.py ({ch_name}) failed: {result.stderr}")
+
+        # Alpha band: 255 where input > 0, else 0
+        alpha_band = tmp_dir / "band_A.tif"
+        band_files.append(alpha_band)
+        cmd = [
+            "gdal_calc.py",
+            "-A", str(input_gray),
+            "--calc=(A > 0) * 255",
+            f"--outfile={alpha_band}",
+            "--type=Byte",
+            "--co=COMPRESS=DEFLATE",
+            "--co=TILED=YES",
+            "--co=BIGTIFF=IF_SAFER",
+            "--quiet",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"gdal_calc.py (alpha) failed: {result.stderr}")
+
+        # Merge bands into RGBA using gdal_merge.py
+        cmd = [
+            "gdal_merge.py",
+            "-o", str(output_path),
+            "-separate",
+            "-co", "COMPRESS=DEFLATE",
+            "-co", "TILED=YES",
+            "-co", "BIGTIFF=IF_SAFER",
+            "-ot", "Byte",
+        ] + [str(f) for f in band_files]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"gdal_merge.py failed: {result.stderr}")
+
+    finally:
+        import shutil
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def get_styles() -> Dict[str, Dict]:
