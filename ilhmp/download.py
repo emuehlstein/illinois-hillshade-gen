@@ -57,6 +57,9 @@ def extract_local_zip(
     Skips the network download step entirely; otherwise identical to the
     internal _download_zip pipeline (unpack → find raster → gdal_translate).
 
+    Temp files are co-located with the output path so they stay on the same
+    disk partition, avoiding accidental /tmp exhaustion for large ZIPs.
+
     Args:
         zip_path: Path to an existing ZIP file on disk
         output_path: Destination GeoTIFF path
@@ -71,7 +74,7 @@ def extract_local_zip(
         raise FileNotFoundError(f"ZIP not found: {zip_path}")
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory() as tmp_dir:
+    with tempfile.TemporaryDirectory(dir=output_path.parent) as tmp_dir:
         tmp_dir = Path(tmp_dir)
         extract_dir = tmp_dir / "extracted"
 
@@ -132,12 +135,16 @@ def _download_zip(
     output_path: Path,
     bounds: Optional[Tuple[float, float, float, float]] = None,
 ) -> Path:
-    """Download and extract from clearinghouse ZIP."""
+    """Download and extract from clearinghouse ZIP.
+
+    Temp files are co-located with the output path so they stay on the same
+    disk partition, avoiding accidental /tmp exhaustion for large ZIPs.
+    """
     zip_url = county_info.get(f"{dem_type.lower()}_url")
     if not zip_url:
         raise ValueError(f"No {dem_type.upper()} ZIP available for {county_info['name']}")
-    
-    with tempfile.TemporaryDirectory() as tmp_dir:
+
+    with tempfile.TemporaryDirectory(dir=output_path.parent) as tmp_dir:
         tmp_dir = Path(tmp_dir)
         zip_path = tmp_dir / "data.zip"
         
