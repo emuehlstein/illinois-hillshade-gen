@@ -57,10 +57,12 @@ def generate(
     altitude: float = 45.0,
     custom_tint: Optional[Tuple[int, int, int]] = None,
     custom_bg: Optional[Tuple[int, int, int]] = None,
+    cache_dir: Optional[Path] = None,
+    force_recompute: bool = False,
 ) -> Path:
     """
     Generate a styled hillshade from a DEM.
-    
+
     Args:
         input_dem: Input DEM GeoTIFF
         output_path: Output styled hillshade GeoTIFF (RGBA)
@@ -70,14 +72,19 @@ def generate(
         altitude: Sun altitude in degrees (0-90, default 45)
         custom_tint: RGB tuple (0-255) for custom style peak color
         custom_bg: RGB tuple (0-255) for custom style background
-    
+        cache_dir: Directory to cache the intermediate grayscale hillshade TIF.
+            If provided, the gray TIF is saved as
+            ``{cache_dir}/{input_dem.stem}_gray.tif`` and reused on subsequent
+            runs that share the same DEM / exaggeration / azimuth / altitude.
+        force_recompute: Ignore any cached grayscale TIF and regenerate it.
+
     Returns:
         Path to the output file
     """
     input_dem = Path(input_dem)
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Get style colors
     if style == "custom":
         if not custom_tint or not custom_bg:
@@ -89,17 +96,35 @@ def generate(
             raise ValueError(f"Unknown style: {style}. Available: {list(STYLES.keys())}")
         tint = STYLES[style]["tint"]
         bg = STYLES[style]["bg"]
-    
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_dir = Path(tmp_dir)
-        gray_path = tmp_dir / "hillshade_gray.tif"
-        
-        # Step 1: Generate grayscale hillshade
-        _generate_grayscale(input_dem, gray_path, exaggeration, azimuth, altitude)
-        
-        # Step 2: Apply color tint with proper alpha
-        _apply_color_tint(gray_path, output_path, tint, bg)
-    
+
+    # Determine grayscale cache path
+    if cache_dir is not None:
+        cache_dir = Path(cache_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        gray_cache = cache_dir / f"{input_dem.stem}_gray.tif"
+    else:
+        gray_cache = None
+
+    if gray_cache and gray_cache.exists() and not force_recompute:
+        # Reuse cached grayscale — skip the expensive gdaldem step
+        _apply_color_tint(gray_cache, output_path, tint, bg)
+    else:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir = Path(tmp_dir)
+            gray_path = tmp_dir / "hillshade_gray.tif"
+
+            # Step 1: Generate grayscale hillshade
+            _generate_grayscale(input_dem, gray_path, exaggeration, azimuth, altitude)
+
+            # Persist to cache if a cache_dir was requested
+            if gray_cache is not None:
+                import shutil
+                shutil.copy2(gray_path, gray_cache)
+                gray_path = gray_cache
+
+            # Step 2: Apply color tint with proper alpha
+            _apply_color_tint(gray_path, output_path, tint, bg)
+
     return output_path
 
 
