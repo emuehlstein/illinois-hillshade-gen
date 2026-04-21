@@ -65,6 +65,7 @@ def run(
     pmtiles: bool = typer.Option(False, "--pmtiles", help="Also generate PMTiles output"),
     view: bool = typer.Option(False, "--view", "-v", help="Launch viewer after completion"),
     json_out: bool = typer.Option(False, "--json", help="Output structured JSON instead of Rich text"),
+    force_recompute: bool = typer.Option(False, "--force-recompute", help="Bypass the grayscale hillshade cache and recompute from scratch."),
 ):
     """
     Full pipeline: download → reproject → hillshade → tile for a county.
@@ -144,11 +145,17 @@ def run(
 
     # Step 3: Hillshade
     hs_path = intermediates_dir / f"{county.lower()}_hillshade_{style}.tif"
-    if not hs_path.exists():
+    if not hs_path.exists() or force_recompute:
         if not json_out:
             console.print(f"[bold]Step 3/5:[/bold] Generating {style} hillshade...")
         with console.status("[green]Generating hillshade...") if not json_out else _nullctx():
-            hillshade.generate(dem_4326, hs_path, style=style, exaggeration=exaggeration)
+            hillshade.generate(
+                dem_4326, hs_path,
+                style=style,
+                exaggeration=exaggeration,
+                cache_dir=intermediates_dir,
+                force_recompute=force_recompute,
+            )
         if not json_out:
             console.print(f"[green]✓[/green] Hillshade: {hs_path}")
     else:
