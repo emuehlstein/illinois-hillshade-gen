@@ -144,7 +144,7 @@ def run(
             console.print(f"[yellow]⏩[/yellow] Using cached: {dem_4326}")
 
     # Step 3: Hillshade
-    hs_path = intermediates_dir / f"{county.lower()}_hillshade_{style}.tif"
+    hs_path = intermediates_dir / f"{county.lower()}_hillshade_{style}_z{exaggeration}.tif"
     if not hs_path.exists() or force_recompute:
         if not json_out:
             console.print(f"[bold]Step 3/5:[/bold] Generating {style} hillshade...")
