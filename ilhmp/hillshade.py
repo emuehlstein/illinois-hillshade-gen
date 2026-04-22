@@ -101,7 +101,7 @@ def generate(
     if cache_dir is not None:
         cache_dir = Path(cache_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
-        gray_cache = cache_dir / f"{input_dem.stem}_gray.tif"
+        gray_cache = cache_dir / f"{input_dem.stem}_gray_z{exaggeration}.tif"
     else:
         gray_cache = None
 
