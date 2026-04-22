@@ -146,6 +146,7 @@ def _generate_grayscale(
         "-compute_edges",
         "-co", "COMPRESS=LZW",
         "-co", "TILED=YES",
+        "-co", "BIGTIFF=YES",
     ]
     
     result = subprocess.run(cmd, capture_output=True, text=True)
