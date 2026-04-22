@@ -213,16 +213,42 @@ def _download_zip(
 
 
 def _find_raster(directory: Path) -> Optional[Path]:
-    """Find the main raster file in an extracted directory."""
-    # Look for GeoTIFF
+    """Find the main raster file in an extracted directory.
+
+    ISGS ZIPs contain both elevation data (_dtm_/_dsm_) and pre-rendered
+    hillshade visualizations (_dth_/_dsh_).  The visualizations are Byte
+    (0-255) and useless for analysis, so we skip them.
+
+    Priority order:
+      1. ArcGrid (hdr.adf) — older ISGS data uses this for the real DEM
+      2. GeoTIFF/IMG — but only if not in a hillshade viz folder
+    """
+    # Skip hillshade visualization folders (dth = DTM hillshade, dsh = DSM hillshade)
+    viz_markers = ("_dth_", "_dsh_", "_dth/", "_dsh/")
+
+    def _is_viz(path: Path) -> bool:
+        s = str(path).lower()
+        return any(m in s for m in viz_markers)
+
+    # Prefer ArcGrid (older ISGS data) — these are always real elevation
+    for adf in directory.rglob("hdr.adf"):
+        if not _is_viz(adf):
+            return adf.parent
+
+    # Fall back to GeoTIFF / IMG, skipping viz folders
     for ext in [".tif", ".tiff", ".img"]:
-        files = list(directory.rglob(f"*{ext}"))
+        files = [f for f in directory.rglob(f"*{ext}") if not _is_viz(f)]
         if files:
             # Return the largest one (main data, not overviews)
             return max(files, key=lambda f: f.stat().st_size)
-    
-    # Look for ArcGrid (folder with hdr.adf)
+
+    # Last resort: anything at all
+    for ext in [".tif", ".tiff", ".img"]:
+        files = list(directory.rglob(f"*{ext}"))
+        if files:
+            return max(files, key=lambda f: f.stat().st_size)
+
     for adf in directory.rglob("hdr.adf"):
         return adf.parent
-    
+
     return None
