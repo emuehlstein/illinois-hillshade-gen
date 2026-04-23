@@ -9,6 +9,7 @@ Download Illinois ILHMP elevation data by county and generate styled hillshade t
 - **Tile**: Output to MBTiles or PMTiles for offline mapping apps
 - **View**: Built-in local tile viewer with basemap switching
 - **Boundaries**: Extract county boundaries from ISGS shapefile
+- **AWS**: Run on EC2 spot instances for large counties without tying up your machine
 
 ## Installation
 
@@ -167,6 +168,34 @@ ilhmp run putnam --view
 
 - **Putnam** (smallest): 2.4GB ZIP, 5,384 tiles, ~5min pipeline
 - **Cook** (largest): 148GB ZIP, ~500K tiles, ~9hr pipeline
+
+## AWS EC2 Deployment
+
+For large counties (Cook, DuPage, etc.) or batch processing, run ilhmp on transient EC2 spot instances:
+
+```bash
+# Setup (one-time)
+cp aws/env.example aws/.env
+# Edit aws/.env with your AWS config
+
+# Launch worker for a county
+aws/launch.sh cook --dem dtm --style dark,light --zoom 10-16 --spot
+
+# Monitor progress
+ssh -i ~/.ssh/mykey.pem ubuntu@<worker-ip> 'tail -f /var/log/ilhmp.log'
+
+# Pull results when done
+aws/pull.sh cook --upload --terminate
+
+# Generate tiles for a specific zoom from existing S3 grayscale
+aws/launch-zoom.sh --gray s3://bucket/gray_9x.tif --zoom 14 --styles dark,light
+
+# Patch into combined mbtiles on tile server
+aws/patch-zoom.sh --source s3://bucket/mbtiles/z14-dark.mbtiles \
+    --target combined-dark.mbtiles --zoom 14
+```
+
+See [`aws/README.md`](aws/README.md) for full documentation, configuration, and cost estimates.
 
 ## License
 

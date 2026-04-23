@@ -1,50 +1,15 @@
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
+.venv/
+dist/
+build/
 
-# Virtual environments
-.env
-.venv
-env/
-venv/
-ENV/
+# Local config (contains secrets)
+aws/.env
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Testing
+# Test cache
 .pytest_cache/
-.coverage
-htmlcov/
 
-# Data files (don't commit large DEM/tiles)
-*.tif
-*.tiff
-*.mbtiles
-*.pmtiles
-*.zip
-
-# Temp
-*.tmp
-*.log
+# OS
+.DS_Store
