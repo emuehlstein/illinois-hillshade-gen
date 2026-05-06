@@ -9,10 +9,12 @@ Styles:
 - gray: Grayscale (no tint)
 """
 
+import shutil
 import subprocess
 import tempfile
+from enum import Enum
 from pathlib import Path
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, List
 
 import numpy as np
 
@@ -47,6 +49,17 @@ STYLES: Dict[str, Dict] = {
     },
 }
 
+# Directory containing bundled ramp files
+_RAMPS_DIR = Path(__file__).parent / "ramps"
+
+
+class ShadingMode(str, Enum):
+    STANDARD = "standard"
+    MULTIDIRECTIONAL = "multidirectional"
+    COMBINED = "combined"
+    IGOR = "igor"
+    COMPOSITE = "composite"
+
 
 def generate(
     input_dem: Path,
@@ -59,6 +72,11 @@ def generate(
     custom_bg: Optional[Tuple[int, int, int]] = None,
     cache_dir: Optional[Path] = None,
     force_recompute: bool = False,
+    shading_mode: ShadingMode = ShadingMode.MULTIDIRECTIONAL,
+    color_mode: str = "ramp",
+    composite_weights: Optional[Tuple[float, float, float]] = None,
+    ramp_file: Optional[Path] = None,
+    legacy: bool = False,
 ) -> Path:
     """
     Generate a styled hillshade from a DEM.
@@ -72,11 +90,15 @@ def generate(
         altitude: Sun altitude in degrees (0-90, default 45)
         custom_tint: RGB tuple (0-255) for custom style peak color
         custom_bg: RGB tuple (0-255) for custom style background
-        cache_dir: Directory to cache the intermediate grayscale hillshade TIF.
-            If provided, the gray TIF is saved as
-            ``{cache_dir}/{input_dem.stem}_gray.tif`` and reused on subsequent
-            runs that share the same DEM / exaggeration / azimuth / altitude.
+        cache_dir: Directory to cache intermediate grayscale hillshade TIFs.
         force_recompute: Ignore any cached grayscale TIF and regenerate it.
+        shading_mode: Shading algorithm (default MULTIDIRECTIONAL).
+        color_mode: 'ramp' (default, uses gdaldem color-relief) or 'tint' (legacy blend).
+        composite_weights: (multi, igor, combined) weights for COMPOSITE mode.
+            Defaults to (0.6, 0.3, 0.1).
+        ramp_file: Path to a custom GDAL color-relief ramp file. Defaults to
+            bundled ramp matching ``style``.
+        legacy: Restore v1 behavior (STANDARD shading, tint color_mode).
 
     Returns:
         Path to the output file
@@ -85,44 +107,72 @@ def generate(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Get style colors
-    if style == "custom":
-        if not custom_tint or not custom_bg:
-            raise ValueError("custom_tint and custom_bg required for style='custom'")
-        tint = custom_tint
-        bg = custom_bg
+    if legacy:
+        shading_mode = ShadingMode.STANDARD
+        color_mode = "tint"
+
+    # Resolve tint/bg colors (needed for tint color_mode)
+    if color_mode == "tint":
+        if style == "custom":
+            if not custom_tint or not custom_bg:
+                raise ValueError("custom_tint and custom_bg required for style='custom'")
+            tint = custom_tint
+            bg = custom_bg
+        else:
+            if style not in STYLES:
+                raise ValueError(f"Unknown style: {style}. Available: {list(STYLES.keys())}")
+            tint = STYLES[style]["tint"]
+            bg = STYLES[style]["bg"]
     else:
-        if style not in STYLES:
+        tint = bg = None
+
+    # Resolve ramp file (needed for ramp color_mode)
+    if color_mode == "ramp" and ramp_file is None:
+        candidate = _RAMPS_DIR / f"{style}.txt"
+        if candidate.exists():
+            ramp_file = candidate
+        elif style not in STYLES:
             raise ValueError(f"Unknown style: {style}. Available: {list(STYLES.keys())}")
-        tint = STYLES[style]["tint"]
-        bg = STYLES[style]["bg"]
+        else:
+            # Fall back to tint if no ramp for custom style
+            color_mode = "tint"
+            tint = custom_tint or STYLES[style]["tint"]
+            bg = custom_bg or STYLES[style]["bg"]
 
     # Determine grayscale cache path
     if cache_dir is not None:
         cache_dir = Path(cache_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
-        gray_cache = cache_dir / f"{input_dem.stem}_gray_z{exaggeration}.tif"
+        mode_tag = shading_mode.value if isinstance(shading_mode, ShadingMode) else shading_mode
+        gray_cache = cache_dir / f"{input_dem.stem}_gray_z{exaggeration}_{mode_tag}.tif"
     else:
         gray_cache = None
 
-    if gray_cache and gray_cache.exists() and not force_recompute:
-        # Reuse cached grayscale — skip the expensive gdaldem step
-        _apply_color_tint(gray_cache, output_path, tint, bg)
-    else:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_dir = Path(tmp_dir)
+    with tempfile.TemporaryDirectory() as _tmp:
+        tmp_dir = Path(_tmp)
+
+        if shading_mode == ShadingMode.COMPOSITE:
+            gray_path = _generate_composite(
+                input_dem, tmp_dir, exaggeration, azimuth, altitude,
+                composite_weights, cache_dir, force_recompute,
+            )
+        else:
             gray_path = tmp_dir / "hillshade_gray.tif"
 
-            # Step 1: Generate grayscale hillshade
-            _generate_grayscale(input_dem, gray_path, exaggeration, azimuth, altitude)
-
-            # Persist to cache if a cache_dir was requested
-            if gray_cache is not None:
-                import shutil
-                shutil.copy2(gray_path, gray_cache)
+            if gray_cache and gray_cache.exists() and not force_recompute:
                 gray_path = gray_cache
+            else:
+                _generate_grayscale(
+                    input_dem, gray_path, exaggeration, azimuth, altitude,
+                    shading_mode=shading_mode,
+                )
+                if gray_cache is not None:
+                    shutil.copy2(gray_path, gray_cache)
+                    gray_path = gray_cache
 
-            # Step 2: Apply color tint with proper alpha
+        if color_mode == "ramp":
+            generate_color_relief(gray_path, output_path, ramp_file)
+        else:
             _apply_color_tint(gray_path, output_path, tint, bg)
 
     return output_path
@@ -134,6 +184,7 @@ def _generate_grayscale(
     exaggeration: float,
     azimuth: float,
     altitude: float,
+    shading_mode: ShadingMode = ShadingMode.MULTIDIRECTIONAL,
 ) -> None:
     """Generate grayscale hillshade using gdaldem."""
     cmd = [
@@ -141,17 +192,123 @@ def _generate_grayscale(
         str(input_dem),
         str(output_path),
         "-z", str(exaggeration),
-        "-az", str(azimuth),
         "-alt", str(altitude),
         "-compute_edges",
         "-co", "COMPRESS=LZW",
         "-co", "TILED=YES",
         "-co", "BIGTIFF=YES",
     ]
-    
+
+    if shading_mode == ShadingMode.MULTIDIRECTIONAL:
+        cmd.append("-multidirectional")
+    elif shading_mode == ShadingMode.COMBINED:
+        cmd.append("-combined")
+    elif shading_mode == ShadingMode.IGOR:
+        cmd.append("-igor")
+    else:
+        # STANDARD: use azimuth
+        cmd += ["-az", str(azimuth)]
+
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"gdaldem failed: {result.stderr}")
+
+
+def _generate_composite(
+    input_dem: Path,
+    tmp_dir: Path,
+    exaggeration: float,
+    azimuth: float,
+    altitude: float,
+    weights: Optional[Tuple[float, float, float]],
+    cache_dir: Optional[Path],
+    force_recompute: bool,
+) -> Path:
+    """
+    Generate composite hillshade by blending multidirectional, igor, and combined.
+
+    Returns path to blended grayscale TIF.
+    """
+    w_multi, w_igor, w_combined = weights if weights else (0.6, 0.3, 0.1)
+
+    layers: List[Tuple[ShadingMode, float]] = [
+        (ShadingMode.MULTIDIRECTIONAL, w_multi),
+        (ShadingMode.IGOR, w_igor),
+        (ShadingMode.COMBINED, w_combined),
+    ]
+
+    layer_paths: List[Path] = []
+    for mode, _ in layers:
+        mode_tag = mode.value
+        if cache_dir is not None:
+            cached = cache_dir / f"{input_dem.stem}_gray_z{exaggeration}_{mode_tag}.tif"
+        else:
+            cached = None
+
+        layer_path = tmp_dir / f"gray_{mode_tag}.tif"
+        if cached and cached.exists() and not force_recompute:
+            layer_path = cached
+        else:
+            _generate_grayscale(
+                input_dem, layer_path, exaggeration, azimuth, altitude,
+                shading_mode=mode,
+            )
+            if cached is not None:
+                shutil.copy2(layer_path, cached)
+                layer_path = cached
+        layer_paths.append(layer_path)
+
+    # Blend with gdal_calc.py: weighted sum, clamp to [0, 255]
+    composite_path = tmp_dir / "gray_composite.tif"
+    calc_expr = (
+        f"numpy.clip({w_multi}*A + {w_igor}*B + {w_combined}*C, 0, 255).astype(numpy.uint8)"
+    )
+    cmd = [
+        "gdal_calc.py",
+        "-A", str(layer_paths[0]),
+        "-B", str(layer_paths[1]),
+        "-C", str(layer_paths[2]),
+        f"--calc={calc_expr}",
+        f"--outfile={composite_path}",
+        "--type=Byte",
+        "--co=COMPRESS=LZW",
+        "--co=TILED=YES",
+        "--co=BIGTIFF=YES",
+        "--quiet",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"gdal_calc.py (composite) failed: {result.stderr}")
+
+    return composite_path
+
+
+def generate_color_relief(
+    input_gray: Path,
+    output_path: Path,
+    ramp_file: Path,
+) -> None:
+    """
+    Apply a GDAL color-relief ramp to a grayscale hillshade.
+
+    Args:
+        input_gray: Grayscale hillshade GeoTIFF
+        output_path: Output colored GeoTIFF
+        ramp_file: GDAL color-relief compatible ramp file
+    """
+    cmd = [
+        "gdaldem", "color-relief",
+        str(input_gray),
+        str(ramp_file),
+        str(output_path),
+        "-alpha",
+        "-co", "COMPRESS=DEFLATE",
+        "-co", "TILED=YES",
+        "-co", "BIGTIFF=YES",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"gdaldem color-relief failed: {result.stderr}")
 
 
 def _apply_color_tint(
@@ -306,7 +463,6 @@ def _apply_color_tint_subprocess(
             raise RuntimeError(f"gdal_merge.py failed: {result.stderr}")
 
     finally:
-        import shutil
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 

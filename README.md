@@ -1,207 +1,261 @@
-# Illinois Hillshade Generator (ilhmp)
+# ilhmp — Illinois Hillshade Map Generator
 
-Download Illinois ILHMP elevation data by county and generate styled hillshade tiles for ATAK and offline mapping.
+Download Illinois ILHMP elevation data and generate styled hillshade tiles for ATAK, web maps, and offline use.
 
-## Features
+**v2** adds advanced terrain rendering inspired by [Robert Simmon's GDAL shaded relief techniques](https://medium.com/@robsimmon/a-gentle-introduction-to-gdal-part-5-shaded-relief-ec29601db654): multi-directional shading, composite blending, auto-exaggeration, and named themes.
 
-- **Download**: Fetch full 1m resolution DTM/DSM data from [ISGS ILHMP](https://clearinghouse.isgs.illinois.edu/data/elevation/illinois-height-modernization-ilhmp)
-- **Hillshade**: Generate hillshades with configurable exaggeration, lighting, and color schemes
-- **Tile**: Output to MBTiles or PMTiles for offline mapping apps
-- **View**: Built-in local tile viewer with basemap switching
-- **Boundaries**: Extract county boundaries from ISGS shapefile
-- **AWS**: Run on EC2 spot instances for large counties without tying up your machine
+## Quick Start
+
+```bash
+pip install -e .
+
+# Generate with a named theme
+ilhmp run cook --theme atak-dark
+
+# Or specify parameters directly
+ilhmp run cook --dem dtm --style dark --shading multidirectional --zoom 10-16
+
+# List available themes
+ilhmp themes
+```
+
+## Themes
+
+Themes are named presets that capture color ramp, shading mode, exaggeration, and other parameters. Use `--theme <name>` with any command.
+
+| Theme | Shading | Color | Exagg | Best For |
+|-------|---------|-------|-------|----------|
+| **`atak-dark`** | multidirectional | blue-grey | auto | ATAK dark mode overlays |
+| **`atak-light`** | multidirectional | warm grey | auto | ATAK light mode overlays |
+| **`simmon`** | composite (60/30/10) | blue-grey | auto | Best overall terrain rendering |
+| **`simmon-light`** | composite (60/30/10) | warm grey | auto | Light basemap composite |
+| **`flat-terrain`** | composite (50/30/20) | blue-grey | 15× | Flat regions (IL, IN, FL) |
+| **`mountain`** | composite (70/20/10) | blue-grey | 2× | Steep terrain (Rockies, Alps) |
+| **`lidar-urban`** | composite (50/30/20) | blue-grey | 6× | 1m LiDAR in cities |
+| **`lidar-natural`** | composite (60/30/10) | blue-grey | 9× | 1m LiDAR in rural areas |
+| **`tactical`** | multidirectional | olive drab | auto | Military-style maps |
+| **`terrain`** | multidirectional | earth tones | auto | Topographic map style |
+| **`grayscale`** | multidirectional | pure grey | auto | Base layer for custom coloring |
+| **`classic`** | standard (315°) | tint blend | 3× | Legacy v1 behavior |
+
+### Theme Details
+
+```bash
+$ ilhmp themes --show simmon
+
+simmon
+   Advanced composite blend (60% multidirectional + 30% igor + 10% combined).
+   Best overall terrain rendering, inspired by Robert Simmon's techniques.
+
+   Parameters:
+   Ramp:          dark
+   Color mode:    ramp
+   Shading:       composite
+   Weights:       multi=0.6, igor=0.3, combined=0.1
+   Exaggeration:  auto
+   Terrain type:  auto
+   Default zoom:  10-16
+   Tags:          advanced, composite, dark
+
+   Equivalent CLI:
+   ilhmp run <county> --style dark --shading composite --color-mode ramp --exaggeration auto --composite-weights 0.6,0.3,0.1
+```
+
+### Visual Comparison
+
+> **Note:** Example tiles below are from Cook County, IL (flat terrain, ~41.9°N).
+> Your results will vary based on terrain — mountainous areas need less exaggeration.
+
+#### Shading Modes (same color ramp, same exaggeration)
+
+| Standard (single 315°) | Multidirectional | Composite (multi+igor+combined) |
+|:-:|:-:|:-:|
+| Linear features parallel to light source can disappear. Simple, fast. | Blends multiple light angles. Good all-around default. | Best detail: combines texture (igor), slope (combined), and directional lighting. |
+
+#### Exaggeration Comparison (Cook County, flat terrain)
+
+| 3× (classic) | 9× (current default) | 15× (flat-terrain theme) | auto |
+|:-:|:-:|:-:|:-:|
+| Subtle — terrain barely visible in flat areas | Good balance for IL | Maximum detail — shows every creek and drainage | Adapts to local terrain statistics |
+
+#### Color Ramps
+
+| Dark (atak-dark) | Light (atak-light) | Tactical | Terrain | Grayscale |
+|:-:|:-:|:-:|:-:|:-:|
+| Blue-grey gradient: `RGB(20,30,50)` → `RGB(120,145,195)` | Neutral grey: `RGB(40,40,40)` → `RGB(245,245,245)` | Olive drab: `RGB(15,20,10)` → `RGB(120,140,80)` | Earth tones: `RGB(60,40,20)` → `RGB(240,220,180)` | Pure grey: `RGB(0,0,0)` → `RGB(255,255,255)` |
+
+#### LiDAR vs DEM
+
+| Source | Resolution | Recommended Theme | Notes |
+|--------|-----------|-------------------|-------|
+| USGS 3DEP 1/3" | ~10m | `atak-dark` or `flat-terrain` | Good for z10-16 regional coverage |
+| USGS 3DEP 1m LiDAR | 1m | `lidar-urban` (cities) or `lidar-natural` (rural) | Buildings provide natural contrast at 1m |
+| ISGS County DEMs | 1ft (0.3m) | `lidar-urban` | Highest detail, biggest files |
+
+## Shading Modes
+
+### Standard
+Classic single-azimuth hillshade (default 315° NW). Fast but can hide linear features aligned with the light source.
+
+```bash
+ilhmp run cook --shading standard --exaggeration 9
+```
+
+### Multidirectional (default)
+Blends light from multiple angles clustered around 315°. Eliminates directional bias. Best general-purpose mode.
+
+```bash
+ilhmp run cook --shading multidirectional
+```
+
+### Combined
+Emphasizes terrain texture and slope over directional lighting. Good for detail-heavy maps.
+
+```bash
+ilhmp run cook --shading combined
+```
+
+### Igor
+Subtle, low-contrast shading designed to be layered with other data. Best used as part of a composite.
+
+```bash
+ilhmp run cook --shading igor
+```
+
+### Composite
+Blends multiple shading algorithms with configurable weights. The `simmon` theme uses 60% multidirectional + 30% igor + 10% combined.
+
+```bash
+# Default weights
+ilhmp run cook --shading composite
+
+# Custom weights
+ilhmp run cook --shading composite --composite-weights 0.5,0.3,0.2
+```
+
+## Auto-Exaggeration
+
+When `--exaggeration auto` (or via a theme that uses auto), ilhmp:
+
+1. Reads elevation statistics from the DEM (`gdalinfo`)
+2. Computes base exaggeration to achieve ~40 gray levels of visual contrast
+3. Applies a zoom-level scaling curve:
+
+| Zoom | Scale Factor | Rationale |
+|------|-------------|-----------|
+| z0-6 | 0.4× | Continental overview — less exagg needed |
+| z7-9 | 0.7× | State-level — moderate |
+| z10-13 | 1.0× | County-level — full exagg |
+| z14-16 | 1.2× | Neighborhood — slightly more for flat terrain |
+| z17-19 | 0.6× | Street (LiDAR) — buildings provide contrast |
+| z20+ | 0.4× | Parcel — back off further |
+
+Override auto for specific terrain:
+```bash
+ilhmp run cook --exaggeration 15    # Fixed 15×
+ilhmp run cook --theme flat-terrain  # Uses 15× preset
+```
+
+## Auxiliary Terrain Layers
+
+Generate aspect, slope, roughness, and TRI (Terrain Ruggedness Index) layers:
+
+```bash
+ilhmp layers cook --dem dtm --output aspect,slope,roughness,TRI
+```
+
+These are useful for:
+- **Aspect**: Solar exposure, vegetation analysis
+- **Slope**: Steepness mapping, hazard assessment
+- **Roughness**: Terrain texture, building detection from LiDAR
+- **TRI**: Terrain ruggedness classification
+
+## Color Ramps
+
+Color ramps are GDAL `color-relief` format files in `ilhmp/ramps/`:
+
+```
+0 20 30 50 255        # shadow color (RGBA)
+64 35 48 73 255
+128 51 68 103 255     # midtone
+192 80 100 145 255
+255 120 145 195 255   # highlight color
+nv 0 0 0 0            # nodata = transparent
+```
+
+Use a custom ramp:
+```bash
+ilhmp run cook --ramp my-custom-ramp.txt --color-mode ramp
+```
+
+### Legacy Tint Mode
+
+v1 used a simple linear blend between background and tint colors. This is still available:
+
+```bash
+ilhmp run cook --color-mode tint --style dark   # v1 behavior
+ilhmp run cook --theme classic                    # same thing
+```
+
+## Custom Themes
+
+Save a theme to JSON:
+```python
+from ilhmp.themes import Theme, save_theme
+from pathlib import Path
+
+my_theme = Theme(
+    name="my-special",
+    description="Custom theme for my project",
+    ramp="dark",
+    shading="composite",
+    composite_weights=(0.5, 0.3, 0.2),
+    exaggeration="12",
+    terrain_type="flat",
+)
+save_theme(my_theme, Path("my-theme.json"))
+```
+
+## Full Pipeline
+
+```bash
+# Download → reproject → hillshade → tile (all-in-one)
+ilhmp run cook --dem dtm --theme simmon --zoom 10-16
+
+# With S3 caching for intermediates
+ilhmp run cook --dem dtm --theme simmon --cache-dir ./cache
+
+# Generate multiple styles from cached DEM
+ilhmp run cook --theme atak-dark --cache-dir ./cache
+ilhmp run cook --theme atak-light --cache-dir ./cache
+ilhmp run cook --theme tactical --cache-dir ./cache
+```
 
 ## Installation
 
 ```bash
+git clone https://github.com/emuehlstein/illinois-hillshade-gen.git
+cd illinois-hillshade-gen
 pip install -e .
 ```
 
 ### Requirements
 
-- Python 3.10+
-- GDAL CLI tools (`gdaldem`, `gdal_calc.py`, `gdal_merge.py`, `gdalwarp`, `gdal_translate`)
-- mb-util (`pip install mbutil`)
-- pmtiles CLI (optional, for PMTiles output)
+- Python ≥ 3.10
+- GDAL CLI tools (`gdaldem`, `gdalwarp`, `gdal2tiles.py`, `gdalinfo`)
+- `mb-util` (for MBTiles packing)
+- Optional: `pmtiles` CLI (for PMTiles output)
+- Optional: GDAL Python bindings (faster color tinting)
 
-#### GDAL Python bindings (optional but recommended)
-
-The hillshade colorization step can use GDAL Python bindings for faster, memory-efficient streaming. If the bindings aren't installed, it falls back to CLI tools (`gdal_calc.py` + `gdal_merge.py`) which work fine but use more disk I/O.
-
-```bash
-# Install with GDAL Python bindings
-pip install -e ".[gdal]"
-
-# Or without (uses CLI fallback)
-pip install -e .
-```
-
-#### macOS (Homebrew)
-```bash
-brew install gdal
-pip install gdal mbutil numpy
-brew install pmtiles  # optional
-```
-
-#### Ubuntu/Debian (including EC2)
-```bash
-sudo apt-get install gdal-bin libgdal-dev python3-gdal
-pip install mbutil numpy
-# GDAL Python bindings come from python3-gdal system package
-```
-
-#### Headless / CI / AWS
-```bash
-apt-get install -y gdal-bin python3-gdal
-pip install git+https://github.com/emuehlstein/illinois-hillshade-gen.git
-# Works without GDAL pip package — falls back to CLI tools
-```
-
-## Quick Start
+## 102 Illinois Counties
 
 ```bash
-# Full pipeline for a county (downloads ~2GB, generates tiles z10-16)
-ilhmp run putnam --dem dtm --style dark --zoom 10-16 --view
-
-# Just download
-ilhmp download putnam --dem dtm --output putnam_dtm.tif
-
-# Generate hillshade from existing DEM
-ilhmp hillshade putnam_dtm.tif --style tactical --exaggeration 3
-
-# Generate tiles
-ilhmp tile putnam_hillshade.tif --zoom 10-16 --format mbtiles
-
-# Launch viewer for existing tiles
-ilhmp view ./putnam-hillshade/tiles --port 9999
-
-# Download county boundary
-ilhmp boundary putnam -o putnam.geojson
+ilhmp counties          # list all
+ilhmp counties --json   # machine-readable
 ```
 
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `ilhmp run` | Full pipeline: download → hillshade → tile |
-| `ilhmp download` | Download elevation data for a county |
-| `ilhmp hillshade` | Generate styled hillshade from a DEM |
-| `ilhmp tile` | Generate MBTiles/PMTiles from hillshade |
-| `ilhmp view` | Launch local tile viewer |
-| `ilhmp boundary` | Download county boundary as GeoJSON |
-| `ilhmp counties` | List available counties |
-
-## Color Styles
-
-| Style | Tint | Background | Use Case |
-|-------|------|------------|----------|
-| `dark` | Blue-gray (77,102,153) | Near-black (18,18,18) | ATAK dark mode |
-| `light` | Warm gray (217,209,199) | Near-white (250,250,250) | ATAK light mode |
-| `tactical` | Olive drab (85,107,47) | Dark olive (24,24,20) | Low-visibility/military |
-| `terrain` | Earth brown (140,120,100) | Cream (245,240,230) | Topographic overlays |
-| `gray` | White (255,255,255) | Black (0,0,0) | Base for custom coloring |
-
-### Custom Colors
-
-```python
-from ilhmp import hillshade
-
-hillshade.generate(
-    "dem.tif",
-    "custom.tif",
-    style="custom",
-    custom_tint=(100, 50, 150),  # Purple
-    custom_bg=(20, 10, 30),
-    exaggeration=3.0,
-)
-```
-
-## Data Sources
-
-### Elevation Data
-- **Source:** [ISGS Illinois Height Modernization Program (ILHMP)](https://clearinghouse.isgs.illinois.edu/data/elevation/illinois-height-modernization-ilhmp)
-- **Resolution:** 1m native LiDAR
-- **Format:** ZIP containing ESRI ArcGrid (.adf) or GeoTIFF
-- **Coverage:** Most Illinois counties (check `ilhmp counties --available`)
-
-### County Boundaries
-- **Source:** [ISGS County Boundaries](https://clearinghouse.isgs.illinois.edu/data/reference/illinois-county-boundaries-polygons-and-lines)
-- **File:** `IL_BNDY_County.zip`
-- **Local cache:** `~/.cache/ilhmp/IL_BNDY_County/`
-
-## Viewer
-
-The built-in viewer provides:
-- Hillshade overlay with opacity control
-- Three basemaps: Dark, Light, Satellite (CARTO + ESRI)
-- Real county boundary polygon (not just bounding box)
-- Live zoom level display
-- Layer toggle controls
-
-Launch with:
-```bash
-ilhmp view ./tiles --port 9999
-# or
-ilhmp run putnam --view
-```
-
-## Pipeline Details
-
-1. **Download:** Fetches ZIP from ISGS clearinghouse (~2GB for small counties)
-2. **Extract:** Unzips and converts ESRI ArcGrid to GeoTIFF if needed
-3. **Reproject:** Transforms to EPSG:4326 (WGS84) for web mapping
-4. **Hillshade:** Generates grayscale hillshade with `gdaldem` (z=3, az=315, alt=45)
-5. **Colorize:** Applies style tint with proper alpha channel handling
-6. **Tile:** Creates XYZ tiles with `gdal2tiles.py` (z10-16 recommended)
-7. **Pack:** Bundles into MBTiles/PMTiles for distribution
-
-### Tile Zoom Levels
-
-| Zoom | Ground Resolution | Use Case |
-|------|------------------|----------|
-| z10-12 | ~150-40m | Overview, state-level |
-| z13-14 | ~20-10m | County-level detail |
-| z15-16 | ~5-2.5m | Full 1m LiDAR detail |
-| z17+ | <1.5m | Only if native >1m resolution |
-
-## Tested Counties
-
-- **Putnam** (smallest): 2.4GB ZIP, 5,384 tiles, ~5min pipeline
-- **Cook** (largest): 148GB ZIP, ~500K tiles, ~9hr pipeline
-
-## AWS EC2 Deployment
-
-For large counties (Cook, DuPage, etc.) or batch processing, run ilhmp on transient EC2 spot instances:
-
-```bash
-# Setup (one-time)
-cp aws/env.example aws/.env
-# Edit aws/.env with your AWS config
-
-# Launch worker for a county
-aws/launch.sh cook --dem dtm --style dark,light --zoom 10-16 --spot
-
-# Monitor progress
-ssh -i ~/.ssh/mykey.pem ubuntu@<worker-ip> 'tail -f /var/log/ilhmp.log'
-
-# Pull results when done
-aws/pull.sh cook --upload --terminate
-
-# Generate tiles for a specific zoom from existing S3 grayscale
-aws/launch-zoom.sh --gray s3://bucket/gray_9x.tif --zoom 14 --styles dark,light
-
-# Patch into combined mbtiles on tile server
-aws/patch-zoom.sh --source s3://bucket/mbtiles/z14-dark.mbtiles \
-    --target combined-dark.mbtiles --zoom 14
-```
-
-See [`aws/README.md`](aws/README.md) for full documentation, configuration, and cost estimates.
+Data sourced from the [Illinois Height Modernization Program (ILHMP)](https://clearinghouse.isgs.illinois.edu/data/elevation) via the Illinois State Geological Survey.
 
 ## License
 
 MIT
-
-## Credits
-
-- Elevation data: [Illinois State Geological Survey](https://www.isgs.illinois.edu/)
-- ILHMP: [Illinois Height Modernization Program](https://clearinghouse.isgs.illinois.edu/data/elevation/illinois-height-modernization-ilhmp)
