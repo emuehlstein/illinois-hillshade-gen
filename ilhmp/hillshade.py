@@ -192,7 +192,6 @@ def _generate_grayscale(
         str(input_dem),
         str(output_path),
         "-z", str(exaggeration),
-        "-alt", str(altitude),
         "-compute_edges",
         "-co", "COMPRESS=LZW",
         "-co", "TILED=YES",
@@ -206,8 +205,8 @@ def _generate_grayscale(
     elif shading_mode == ShadingMode.IGOR:
         cmd.append("-igor")
     else:
-        # STANDARD: use azimuth
-        cmd += ["-az", str(azimuth)]
+        # STANDARD: use azimuth and altitude
+        cmd += ["-az", str(azimuth), "-alt", str(altitude)]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:

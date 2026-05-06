@@ -63,28 +63,52 @@ simmon
 
 ### Visual Comparison
 
-> **Note:** Example tiles below are from Cook County, IL (flat terrain, ~41.9°N).
-> Your results will vary based on terrain — mountainous areas need less exaggeration.
+All examples below are from the **Summerdale neighborhood** in Chicago (2km around 41.9735°N, 87.6805°W) — extremely flat terrain (~18m total relief, stddev ~2m). This is the hardest case for hillshade rendering.
 
-#### Shading Modes (same color ramp, same exaggeration)
+#### Shading Modes
 
-| Standard (single 315°) | Multidirectional | Composite (multi+igor+combined) |
-|:-:|:-:|:-:|
-| Linear features parallel to light source can disappear. Simple, fast. | Blends multiple light angles. Good all-around default. | Best detail: combines texture (igor), slope (combined), and directional lighting. |
+All use dark color ramp at 9× exaggeration. Left to right: Classic v1 (3×, single-azimuth, tint blend), Multidirectional, Combined, Igor, Composite blend.
 
-#### Exaggeration Comparison (Cook County, flat terrain)
+![Shading Modes Comparison](examples/summerdale/compare-shading-modes.png)
 
-| 3× (classic) | 9× (current default) | 15× (flat-terrain theme) | auto |
-|:-:|:-:|:-:|:-:|
-| Subtle — terrain barely visible in flat areas | Good balance for IL | Maximum detail — shows every creek and drainage | Adapts to local terrain statistics |
+| Mode | Character | Best For |
+|------|-----------|----------|
+| **Classic** | Single light direction, simple | Legacy compatibility |
+| **Multidirectional** | Even illumination from all angles | General-purpose default |
+| **Combined** | Emphasizes slope and texture | Detail-heavy maps |
+| **Igor** | Subtle, low-contrast | Layering with other data |
+| **Composite** | Best of all three blended | Overall best rendering |
 
-#### Color Ramps
+#### Themes
 
-| Dark (atak-dark) | Light (atak-light) | Tactical | Terrain | Grayscale |
-|:-:|:-:|:-:|:-:|:-:|
-| Blue-grey gradient: `RGB(20,30,50)` → `RGB(120,145,195)` | Neutral grey: `RGB(40,40,40)` → `RGB(245,245,245)` | Olive drab: `RGB(15,20,10)` → `RGB(120,140,80)` | Earth tones: `RGB(60,40,20)` → `RGB(240,220,180)` | Pure grey: `RGB(0,0,0)` → `RGB(255,255,255)` |
+Different visual presets for the same terrain:
 
-#### LiDAR vs DEM
+![Themes Comparison](examples/summerdale/compare-themes.png)
+
+#### Exaggeration
+
+How vertical exaggeration affects flat terrain visibility:
+
+![Exaggeration Comparison](examples/summerdale/compare-exaggeration.png)
+
+| Exaggeration | Effect on Flat Terrain |
+|-------------|------------------------|
+| 3× (classic) | Subtle — terrain barely visible |
+| 9× (composite) | Good balance for Illinois |
+| 10× (auto) | Auto-computed from DEM statistics |
+| 15× (flat-terrain) | Maximum detail — every creek and drainage visible |
+
+#### Individual Theme Examples
+
+| Theme | Preview |
+|-------|---------|
+| Dark Composite 9× | ![](examples/summerdale/composite-9x.png) |
+| Light Composite 9× | ![](examples/summerdale/composite-light.png) |
+| Tactical | ![](examples/summerdale/tactical.png) |
+| Igor | ![](examples/summerdale/igor-9x.png) |
+| Classic v1 | ![](examples/summerdale/classic-tint.png) |
+
+#### Recommended Themes by Data Source
 
 | Source | Resolution | Recommended Theme | Notes |
 |--------|-----------|-------------------|-------|
