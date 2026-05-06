@@ -29,7 +29,7 @@ def generate_tiles_direct(
         "gdal2tiles.py",
         "-z", f"{min_zoom}-{max_zoom}",
         "-w", "none",
-        "--xyz",
+        "--tms",
         "--processes=4",
         str(input_raster),
         str(output_dir),
