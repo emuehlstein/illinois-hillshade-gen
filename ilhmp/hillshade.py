@@ -28,12 +28,12 @@ except ImportError:
 # Color presets: (tint RGB 0-255, background RGB 0-255)
 STYLES: Dict[str, Dict] = {
     "dark": {
-        "tint": (77, 102, 153),     # Blue-gray
-        "bg": (18, 18, 18),          # Near-black
+        "tint": (70, 95, 145),      # Deep blue (v2b)
+        "bg": (8, 14, 30),           # Near-black navy
     },
     "light": {
-        "tint": (217, 209, 199),    # Warm gray
-        "bg": (250, 250, 250),       # Near-white
+        "tint": (250, 246, 240),    # Warm white (v2c)
+        "bg": (85, 72, 52),          # Warm sepia shadow
     },
     "tactical": {
         "tint": (85, 107, 47),      # Olive drab

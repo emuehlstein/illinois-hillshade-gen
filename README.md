@@ -81,9 +81,9 @@ All use dark color ramp at 9× exaggeration. Left to right: Classic v1 (3×, sin
 
 #### Themes
 
-Different visual presets for the same terrain:
+All themes use **multidirectional shading** with **auto exaggeration** (10× computed for this flat terrain):
 
-![Themes Comparison](examples/summerdale/compare-themes.png)
+![v2 Themes](examples/summerdale/v2-themes-final.png)
 
 #### Exaggeration
 
@@ -102,11 +102,10 @@ How vertical exaggeration affects flat terrain visibility:
 
 | Theme | Preview |
 |-------|---------|
-| Dark Composite 9× | ![](examples/summerdale/composite-9x.png) |
-| Light Composite 9× | ![](examples/summerdale/composite-light.png) |
-| Tactical | ![](examples/summerdale/tactical.png) |
-| Igor | ![](examples/summerdale/igor-9x.png) |
-| Classic v1 | ![](examples/summerdale/classic-tint.png) |
+| Dark (default) | ![](examples/summerdale/v2-dark-multi.png) |
+| Light (default) | ![](examples/summerdale/v2-light-multi.png) |
+| Tactical | ![](examples/summerdale/v2-tactical.png) |
+| Grayscale | ![](examples/summerdale/v2-grayscale.png) |
 
 #### Recommended Themes by Data Source
 
