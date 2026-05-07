@@ -93,6 +93,66 @@ jobs:
           chmod 600 ~/.ssh/mapserver-ec2.pem
           ssh-keyscan -H 3.20.103.82 >> ~/.ssh/known_hosts 2>/dev/null || true
       
+      - name: Prepare instrumented runner script
+        run: |
+          cat > /tmp/instrumented-runner.sh << 'RUNNER_EOF'
+          #!/bin/bash
+          set -euo pipefail
+          
+          COUNTY="$1"
+          DEM="$2"
+          STYLES="$3"
+          EXAGGERATIONS="$4"
+          ZOOM="$5"
+          
+          PROGRESS_FILE="/data/output/progress.json"
+          LOG_FILE="/var/log/hillshade-gen.log"
+          
+          update_progress() {
+              local phase="$1" status="$2" details="${3:-}" percent="${4:-0}"
+              cat > "$PROGRESS_FILE" << EOF
+          {"county":"$COUNTY","phase":"$phase","status":"$status","details":"$details","percent":$percent,"timestamp":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+          EOF
+              echo "[$(date +%H:%M:%S)] [$phase] $status ${details:+- $details}" | tee -a "$LOG_FILE"
+          }
+          
+          update_progress "start" "started" "Hillshade generation starting" 0
+          
+          # Run ilhmp with progress tracking
+          IFS=',' read -ra STYLES_ARR <<< "$STYLES"
+          IFS=',' read -ra EXAGS_ARR <<< "$EXAGGERATIONS"
+          TOTAL=$((${#STYLES_ARR[@]} * ${#EXAGS_ARR[@]}))
+          IDX=0
+          
+          for style in "${STYLES_ARR[@]}"; do
+              for exag in "${EXAGS_ARR[@]}"; do
+                  IDX=$((IDX + 1))
+                  PCT=$((IDX * 80 / TOTAL))
+                  
+                  update_progress "generate" "running" "$style @ ${exag}x ($IDX/$TOTAL)" "$PCT"
+                  
+                  ilhmp run "$COUNTY" \
+                      --dem "$DEM" \
+                      --style "$style" \
+                      --exaggeration "$exag" \
+                      --zoom "$ZOOM" \
+                      --output "/data/output/${COUNTY}/${style}-${exag}x" \
+                      --cache-dir "/data/cache" 2>&1 | tee -a "$LOG_FILE"
+                  
+                  update_progress "generate" "completed" "$style @ ${exag}x done" "$PCT"
+              done
+          done
+          
+          update_progress "upload" "started" "Uploading to S3" 85
+          aws s3 sync /data/output/${COUNTY}/ s3://ilhmp-dem-cache/${COUNTY}/ \
+              --exclude "*" --include "*.mbtiles" 2>&1 | tee -a "$LOG_FILE"
+          update_progress "upload" "completed" "Upload complete" 95
+          
+          touch /data/output/DONE
+          update_progress "complete" "completed" "All done" 100
+          RUNNER_EOF
+          chmod +x /tmp/instrumented-runner.sh
+      
       - name: Launch EC2 worker
         id: launch
         env:
@@ -107,37 +167,67 @@ jobs:
           IAM_INSTANCE_PROFILE: ${{ secrets.AWS_IAM_INSTANCE_PROFILE }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
         run: |
-          set -x  # Enable verbose logging
+          set -x
           
           echo "::group::Launching EC2 worker for $COUNTY"
-          echo "County: $COUNTY"
-          echo "DEM: $DEM"
-          echo "Styles: $STYLES"
-          echo "Exaggerations: $EXAGGERATIONS"
-          echo "Zoom: $ZOOM"
-          echo "Instance type: $WORKER_INSTANCE_TYPE"
+          echo "County: $COUNTY, DEM: $DEM, Styles: $STYLES, Exaggerations: $EXAGGERATIONS"
           
-          cd aws
+          # Create user-data that uses our instrumented runner
+          cat > /tmp/user-data.sh << 'USERDATA_EOF'
+          #!/bin/bash
+          set -x
+          exec > /var/log/user-data.log 2>&1
           
-          # Launch worker (on-demand, no spot)
-          ./generate-aws.sh "$COUNTY" \
-            --dem "$DEM" \
-            --style "$STYLES" \
-            --exaggeration "$EXAGGERATIONS" \
-            --zoom "$ZOOM" 2>&1 | tee /tmp/launch-${COUNTY}.log
+          # Install ilhmp
+          pip3 install git+https://github.com/emuehlstein/illinois-hillshade-gen.git@v2-simmon
           
-          # Extract worker info
-          if [ -f "/tmp/hillshade-worker-${COUNTY}.env" ]; then
-            cat /tmp/hillshade-worker-${COUNTY}.env
-            source /tmp/hillshade-worker-${COUNTY}.env
-            echo "worker_ip=$WORKER_IP" >> $GITHUB_OUTPUT
-            echo "worker_id=$WORKER_INSTANCE_ID" >> $GITHUB_OUTPUT
-            echo "✅ Worker launched: $WORKER_IP ($WORKER_INSTANCE_ID)"
-          else
-            echo "❌ Worker info file not found!"
-            cat /tmp/launch-${COUNTY}.log
-            exit 1
-          fi
+          # Download and run instrumented runner
+          aws s3 cp s3://__S3_BUCKET__/ci/instrumented-runner.sh /usr/local/bin/runner.sh
+          chmod +x /usr/local/bin/runner.sh
+          
+          mkdir -p /data/output /data/cache
+          /usr/local/bin/runner.sh "__COUNTY__" "__DEM__" "__STYLES__" "__EXAGGERATIONS__" "__ZOOM__"
+          USERDATA_EOF
+          
+          # Upload instrumented runner to S3
+          aws s3 cp /tmp/instrumented-runner.sh s3://$S3_BUCKET/ci/instrumented-runner.sh
+          
+          # Substitute placeholders
+          sed -i "s|__S3_BUCKET__|$S3_BUCKET|g" /tmp/user-data.sh
+          sed -i "s|__COUNTY__|$COUNTY|g" /tmp/user-data.sh
+          sed -i "s|__DEM__|$DEM|g" /tmp/user-data.sh
+          sed -i "s|__STYLES__|$STYLES|g" /tmp/user-data.sh
+          sed -i "s|__EXAGGERATIONS__|$EXAGGERATIONS|g" /tmp/user-data.sh
+          sed -i "s|__ZOOM__|$ZOOM|g" /tmp/user-data.sh
+          
+          # Launch EC2 instance
+          INSTANCE_JSON=$(aws ec2 run-instances \
+              --image-id resolve:ssm:/aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id \
+              --instance-type $WORKER_INSTANCE_TYPE \
+              --key-name $KEY_PAIR_NAME \
+              --security-group-ids $SECURITY_GROUP \
+              --iam-instance-profile Name=$IAM_INSTANCE_PROFILE \
+              --user-data file:///tmp/user-data.sh \
+              --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=hillshade-worker-$COUNTY},{Key=Project,Value=ilhmp-ci}]" \
+              --output json)
+          
+          INSTANCE_ID=$(echo "$INSTANCE_JSON" | jq -r '.Instances[0].InstanceId')
+          echo "✅ Launched instance: $INSTANCE_ID"
+          
+          # Wait for public IP
+          echo "Waiting for public IP..."
+          for i in {1..30}; do
+              WORKER_IP=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
+                  --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+              if [ "$WORKER_IP" != "None" ] && [ -n "$WORKER_IP" ]; then
+                  break
+              fi
+              sleep 5
+          done
+          
+          echo "worker_ip=$WORKER_IP" >> $GITHUB_OUTPUT
+          echo "worker_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          echo "✅ Worker ready: $WORKER_IP ($INSTANCE_ID)"
           echo "::endgroup::"
       
       - name: Monitor generation progress
@@ -152,18 +242,22 @@ jobs:
           
           MAX_ITERATIONS=60  # 2 hours @ 2 min per iteration
           ITERATION=0
+          LAST_PHASE=""
+          
+          # Wait for worker to boot
+          echo "Waiting for worker to become reachable..."
+          for i in {1..10}; do
+            if ssh -i ~/.ssh/mapserver-ec2.pem -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+                ubuntu@$WORKER_IP 'echo OK' 2>/dev/null; then
+              echo "✅ Worker is reachable"
+              break
+            fi
+            echo "  Attempt $i/10..."
+            sleep 30
+          done
           
           while [ $ITERATION -lt $MAX_ITERATIONS ]; do
             ITERATION=$((ITERATION + 1))
-            echo "[$ITERATION/$MAX_ITERATIONS] Checking worker status..."
-            
-            # Check if worker is reachable
-            if ! ssh -i ~/.ssh/mapserver-ec2.pem -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
-                ubuntu@$WORKER_IP 'echo OK' 2>&1; then
-              echo "⚠️  Worker not reachable (may still be booting)"
-              sleep 120
-              continue
-            fi
             
             # Check for completion marker
             if ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
@@ -172,17 +266,34 @@ jobs:
               break
             fi
             
-            # Show progress (last 20 lines of log)
-            echo "--- Worker log tail ---"
-            ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
-              ubuntu@$WORKER_IP 'tail -20 /var/log/hillshade-gen.log 2>/dev/null || tail -20 /var/log/cloud-init-output.log' || true
-            echo "--- End log ---"
+            # Fetch progress JSON
+            PROGRESS=$(ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
+              ubuntu@$WORKER_IP 'cat /data/output/progress.json 2>/dev/null' || echo '{}')
+            
+            if [ -n "$PROGRESS" ] && [ "$PROGRESS" != "{}" ]; then
+              PHASE=$(echo "$PROGRESS" | jq -r '.phase // "unknown"')
+              STATUS=$(echo "$PROGRESS" | jq -r '.status // "unknown"')
+              DETAILS=$(echo "$PROGRESS" | jq -r '.details // ""')
+              PERCENT=$(echo "$PROGRESS" | jq -r '.percent // 0')
+              
+              # Only log when phase changes or every 5 iterations
+              if [ "$PHASE" != "$LAST_PHASE" ] || [ $((ITERATION % 5)) -eq 0 ]; then
+                echo "[$ITERATION/$MAX_ITERATIONS] [$PERCENT%] $PHASE: $STATUS - $DETAILS"
+                LAST_PHASE="$PHASE"
+              fi
+            else
+              echo "[$ITERATION/$MAX_ITERATIONS] Waiting for progress data..."
+            fi
             
             sleep 120  # 2 min between checks
           done
           
           if [ $ITERATION -ge $MAX_ITERATIONS ]; then
             echo "❌ Timeout after 2 hours"
+            # Show final log for debugging
+            echo "--- Final worker log ---"
+            ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
+              ubuntu@$WORKER_IP 'tail -50 /var/log/hillshade-gen.log' || true
             exit 1
           fi
           
