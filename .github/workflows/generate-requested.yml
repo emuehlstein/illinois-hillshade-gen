@@ -118,6 +118,22 @@ jobs:
             exit 1
           fi
           
+          # Setup SSH for progress monitoring
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TILE_SERVER_SSH_KEY }}" > ~/.ssh/worker.pem
+          chmod 600 ~/.ssh/worker.pem
+          
+          # Wait for SSH to be ready
+          echo "⏳ Waiting for SSH access..."
+          for i in {1..30}; do
+            if ssh -i ~/.ssh/worker.pem -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+                ubuntu@$WORKER_IP 'echo ready' 2>/dev/null; then
+              echo "✅ SSH ready"
+              break
+            fi
+            sleep 10
+          done
+          
           # Wait for worker to finish (poll every 2 min, max 2 hours)
           echo "⏳ Waiting for worker to complete generation..."
           MAX_ITERATIONS=60
@@ -137,7 +153,40 @@ jobs:
               break
             fi
             
+            # Collect progress stats via SSH
             echo "[$ITERATION/$MAX_ITERATIONS] Worker state: $WORKER_STATE"
+            
+            ssh -i ~/.ssh/worker.pem -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+                ubuntu@$WORKER_IP 'bash -s' 2>/dev/null << 'REMOTE_STATS'
+              # Disk usage
+              DISK_USED=$(df -h /data | tail -1 | awk '{print $3}')
+              DISK_PCT=$(df -h /data | tail -1 | awk '{print $5}')
+              
+              # CPU load
+              CPU_LOAD=$(uptime | awk -F'load average:' '{print $2}' | cut -d, -f1 | xargs)
+              
+              # Output files
+              MBTILES_COUNT=$(find /data/output -name "*.mbtiles" 2>/dev/null | wc -l)
+              MBTILES_SIZE=$(du -sh /data/output 2>/dev/null | cut -f1 || echo "0")
+              
+              # Last log activity
+              if [ -f /var/log/hillshade-gen.log ]; then
+                LAST_LOG=$(tail -1 /var/log/hillshade-gen.log 2>/dev/null | cut -c1-100 || echo "(no log)")
+              else
+                LAST_LOG="(log not created yet)"
+              fi
+              
+              # DONE marker check
+              if [ -f /data/output/DONE ]; then
+                echo "   🎉 DONE marker found!"
+              fi
+              
+              echo "   💾 Disk: $DISK_USED ($DISK_PCT full)"
+              echo "   🖥️  CPU load: $CPU_LOAD"
+              echo "   📦 Output: $MBTILES_COUNT mbtiles ($MBTILES_SIZE)"
+              echo "   📋 Latest: $LAST_LOG"
+REMOTE_STATS
+            
             sleep 120
           done
           
