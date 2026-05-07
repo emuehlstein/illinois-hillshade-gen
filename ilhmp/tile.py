@@ -82,6 +82,7 @@ def generate_mbtiles_from_dir(
     
     cmd = [
         "mb-util",
+        "--scheme=tms",
         str(tiles_dir),
         str(output_path),
         "--image_format=png",
