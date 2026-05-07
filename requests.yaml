@@ -1,11 +1,11 @@
+# Hillshade Generation Requests
+
 requests:
-- county: putnam
-  dem: dtm
-  styles:
-  - dark
-  exaggerations:
-  - 9
-  zoom: 10-16
-  status: completed
-  deployed: https://exaggeratedrelief.com/services/putnam-dtm-dark-9x-tms/map
-  generated_at: '2026-05-07T18:45:26-05:00'
+  - county: putnam
+    dem: dtm
+    styles:
+      - dark
+    exaggerations:
+      - 9
+    zoom: "10-16"
+    status: pending
