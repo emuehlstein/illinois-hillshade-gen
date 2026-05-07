@@ -201,9 +201,9 @@ jobs:
           sed -i "s|__ZOOM__|$ZOOM|g" /tmp/user-data.sh
           
           # Launch EC2 instance
-          # Ubuntu 24.04 LTS ARM64 (ami-0961e9e3974e79f5d, updated 2026-05-07)
+          # Ubuntu 24.04 LTS ARM64 us-east-2 (ami-0106525f456f9f776, updated 2026-05-07)
           INSTANCE_JSON=$(aws ec2 run-instances \
-              --image-id ami-0961e9e3974e79f5d \
+              --image-id ami-0106525f456f9f776 \
               --instance-type $WORKER_INSTANCE_TYPE \
               --key-name $KEY_PAIR_NAME \
               --security-group-ids $SECURITY_GROUP \
