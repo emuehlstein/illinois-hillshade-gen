@@ -37,6 +37,17 @@ requests:
     zoom: "10-16"
     status: pending
     
+  # Putnam County - CI/CD pipeline test (small county, ~15 min)
+  - county: putnam
+    dem: dtm
+    styles:
+      - dark
+      - light
+    exaggerations:
+      - 9
+    zoom: "10-16"
+    status: pending
+  
   # Add your request below (copy the template):
   # - county: <your-county>
   #   dem: dtm
