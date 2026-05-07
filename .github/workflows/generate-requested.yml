@@ -1,4 +1,4 @@
-name: Generate Hillshades
+name: Generate Hillshades (Simple)
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       county:
-        description: 'County name to generate'
+        description: 'County name'
         required: true
       styles:
         description: 'Styles (comma-separated)'
@@ -19,24 +19,21 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  detect-changes:
+  parse-requests:
     runs-on: ubuntu-latest
     outputs:
       counties: ${{ steps.parse.outputs.counties }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       
       - name: Parse pending requests
         id: parse
         run: |
           pip install pyyaml
           python3 << 'EOF'
-          import yaml, json, sys, os
+          import yaml, json, os
           
           with open('requests.yaml') as f:
               data = yaml.safe_load(f)
@@ -47,8 +44,7 @@ jobs:
                   'dem': r.get('dem', 'dtm'),
                   'styles': ','.join(r.get('styles', ['dark'])),
                   'exaggerations': ','.join(str(e) for e in r.get('exaggerations', [9])),
-                  'zoom': r.get('zoom', '10-16'),
-                  'priority': r.get('priority', 'normal')
+                  'zoom': r.get('zoom', '10-16')
               }
               for r in data.get('requests', [])
               if r.get('status') == 'pending'
@@ -56,389 +52,78 @@ jobs:
           
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"counties={json.dumps(pending)}\n")
-          print(f"Found {len(pending)} pending request(s)")
+          
+          print(f"Found {len(pending)} pending request(s):")
           for p in pending:
               print(f"  - {p['county']}: {p['styles']} @ {p['exaggerations']}x")
           EOF
 
   generate:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.counties != '[]'
+    needs: parse-requests
+    if: needs.parse-requests.outputs.counties != '[]'
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        request: ${{ fromJson(needs.detect-changes.outputs.counties) }}
-      max-parallel: 2
+        request: ${{ fromJson(needs.parse-requests.outputs.counties) }}
+      max-parallel: 1
       fail-fast: false
     
     steps:
       - uses: actions/checkout@v4
       
-      - name: Configure AWS credentials
+      - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-2
       
-      - name: Install dependencies
-        run: |
-          pip install pyyaml boto3
-          sudo apt-get update && sudo apt-get install -y jq
-      
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.TILE_SERVER_SSH_KEY }}" > ~/.ssh/mapserver-ec2.pem
-          chmod 600 ~/.ssh/mapserver-ec2.pem
-          ssh-keyscan -H 3.20.103.82 >> ~/.ssh/known_hosts 2>/dev/null || true
-      
-      - name: Prepare instrumented runner script
-        run: |
-          cat > /tmp/instrumented-runner.sh << 'RUNNER_EOF'
-          #!/bin/bash
-          set -euo pipefail
-          
-          COUNTY="$1"
-          DEM="$2"
-          STYLES="$3"
-          EXAGGERATIONS="$4"
-          ZOOM="$5"
-          
-          PROGRESS_FILE="/data/output/progress.json"
-          LOG_FILE="/var/log/hillshade-gen.log"
-          
-          update_progress() {
-              local phase="$1" status="$2" details="${3:-}" percent="${4:-0}"
-              cat > "$PROGRESS_FILE" << EOF
-          {"county":"$COUNTY","phase":"$phase","status":"$status","details":"$details","percent":$percent,"timestamp":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
-          EOF
-              echo "[$(date +%H:%M:%S)] [$phase] $status ${details:+- $details}" | tee -a "$LOG_FILE"
-          }
-          
-          update_progress "start" "started" "Hillshade generation starting" 0
-          
-          # Run ilhmp with progress tracking
-          IFS=',' read -ra STYLES_ARR <<< "$STYLES"
-          IFS=',' read -ra EXAGS_ARR <<< "$EXAGGERATIONS"
-          TOTAL=$((${#STYLES_ARR[@]} * ${#EXAGS_ARR[@]}))
-          IDX=0
-          
-          for style in "${STYLES_ARR[@]}"; do
-              for exag in "${EXAGS_ARR[@]}"; do
-                  IDX=$((IDX + 1))
-                  PCT=$((IDX * 80 / TOTAL))
-                  
-                  update_progress "generate" "running" "$style @ ${exag}x ($IDX/$TOTAL)" "$PCT"
-                  
-                  ilhmp run "$COUNTY" \
-                      --dem "$DEM" \
-                      --style "$style" \
-                      --exaggeration "$exag" \
-                      --zoom "$ZOOM" \
-                      --output "/data/output/${COUNTY}/${style}-${exag}x" \
-                      --cache-dir "/data/cache" 2>&1 | tee -a "$LOG_FILE"
-                  
-                  update_progress "generate" "completed" "$style @ ${exag}x done" "$PCT"
-              done
-          done
-          
-          update_progress "upload" "started" "Uploading to S3" 85
-          aws s3 sync /data/output/${COUNTY}/ s3://ilhmp-dem-cache/${COUNTY}/ \
-              --exclude "*" --include "*.mbtiles" 2>&1 | tee -a "$LOG_FILE"
-          update_progress "upload" "completed" "Upload complete" 95
-          
-          touch /data/output/DONE
-          update_progress "complete" "completed" "All done" 100
-          RUNNER_EOF
-          chmod +x /tmp/instrumented-runner.sh
-      
-      - name: Launch EC2 worker
-        id: launch
+      - name: Generate hillshades
         env:
           COUNTY: ${{ matrix.request.county }}
           DEM: ${{ matrix.request.dem }}
           STYLES: ${{ matrix.request.styles }}
           EXAGGERATIONS: ${{ matrix.request.exaggerations }}
           ZOOM: ${{ matrix.request.zoom }}
-          WORKER_INSTANCE_TYPE: c7g.2xlarge
           SECURITY_GROUP: ${{ secrets.AWS_SECURITY_GROUP }}
           KEY_PAIR_NAME: ${{ secrets.AWS_KEY_PAIR_NAME }}
           IAM_INSTANCE_PROFILE: ${{ secrets.AWS_IAM_INSTANCE_PROFILE }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          WORKER_INSTANCE_TYPE: c7g.2xlarge
         run: |
           set -x
           
-          echo "::group::Launching EC2 worker for $COUNTY"
-          echo "County: $COUNTY, DEM: $DEM, Styles: $STYLES, Exaggerations: $EXAGGERATIONS"
+          echo "🗺️  Generating hillshades for $COUNTY"
+          echo "   DEM: $DEM"
+          echo "   Styles: $STYLES"
+          echo "   Exaggerations: $EXAGGERATIONS"
+          echo "   Zoom: $ZOOM"
           
-          # Create user-data that uses our instrumented runner
-          cat > /tmp/user-data.sh << 'USERDATA_EOF'
-          #!/bin/bash
-          set -x
-          exec > /var/log/user-data.log 2>&1
+          cd aws
           
-          # Install ilhmp
-          pip3 install git+https://github.com/emuehlstein/illinois-hillshade-gen.git@v2-simmon
+          # Run the proven generate-aws.sh script
+          ./generate-aws.sh "$COUNTY" \
+            --dem "$DEM" \
+            --style "$STYLES" \
+            --exaggeration "$EXAGGERATIONS" \
+            --zoom "$ZOOM" 2>&1 | tee /tmp/generate-${COUNTY}.log
           
-          # Download and run instrumented runner
-          aws s3 cp s3://__S3_BUCKET__/ci/instrumented-runner.sh /usr/local/bin/runner.sh
-          chmod +x /usr/local/bin/runner.sh
+          # Upload logs to S3
+          if [ -f "/tmp/generate-${COUNTY}.log" ]; then
+            aws s3 cp /tmp/generate-${COUNTY}.log \
+              s3://$S3_BUCKET/ci/logs/${COUNTY}-$(date +%Y%m%d-%H%M%S).log
+            echo "📋 Logs uploaded to S3"
+          fi
           
-          mkdir -p /data/output /data/cache
-          /usr/local/bin/runner.sh "__COUNTY__" "__DEM__" "__STYLES__" "__EXAGGERATIONS__" "__ZOOM__"
-          USERDATA_EOF
-          
-          # Upload instrumented runner to S3
-          aws s3 cp /tmp/instrumented-runner.sh s3://$S3_BUCKET/ci/instrumented-runner.sh
-          
-          # Substitute placeholders
-          sed -i "s|__S3_BUCKET__|$S3_BUCKET|g" /tmp/user-data.sh
-          sed -i "s|__COUNTY__|$COUNTY|g" /tmp/user-data.sh
-          sed -i "s|__DEM__|$DEM|g" /tmp/user-data.sh
-          sed -i "s|__STYLES__|$STYLES|g" /tmp/user-data.sh
-          sed -i "s|__EXAGGERATIONS__|$EXAGGERATIONS|g" /tmp/user-data.sh
-          sed -i "s|__ZOOM__|$ZOOM|g" /tmp/user-data.sh
-          
-          # Launch EC2 instance
-          # Ubuntu 24.04 LTS ARM64 us-east-2 (ami-0106525f456f9f776, updated 2026-05-07)
-          INSTANCE_JSON=$(aws ec2 run-instances \
-              --image-id ami-0106525f456f9f776 \
-              --instance-type $WORKER_INSTANCE_TYPE \
-              --key-name $KEY_PAIR_NAME \
-              --security-group-ids $SECURITY_GROUP \
-              --iam-instance-profile Name=$IAM_INSTANCE_PROFILE \
-              --user-data file:///tmp/user-data.sh \
-              --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=hillshade-worker-$COUNTY},{Key=Project,Value=ilhmp-ci}]" \
-              --output json)
-          
-          INSTANCE_ID=$(echo "$INSTANCE_JSON" | jq -r '.Instances[0].InstanceId')
-          echo "✅ Launched instance: $INSTANCE_ID"
-          
-          # Wait for public IP
-          echo "Waiting for public IP..."
-          for i in {1..30}; do
-              WORKER_IP=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
-                  --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
-              if [ "$WORKER_IP" != "None" ] && [ -n "$WORKER_IP" ]; then
-                  break
-              fi
-              sleep 5
-          done
-          
-          echo "worker_ip=$WORKER_IP" >> $GITHUB_OUTPUT
-          echo "worker_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
-          echo "✅ Worker ready: $WORKER_IP ($INSTANCE_ID)"
-          echo "::endgroup::"
+          echo "✅ Generation complete for $COUNTY"
       
-      - name: Monitor generation progress
-        id: monitor
-        env:
-          COUNTY: ${{ matrix.request.county }}
-          WORKER_IP: ${{ steps.launch.outputs.worker_ip }}
+      - name: Mark as completed
+        if: success()
         run: |
-          set -x
-          
-          echo "::group::Monitoring $COUNTY generation on $WORKER_IP"
-          
-          MAX_ITERATIONS=60  # 2 hours @ 2 min per iteration
-          ITERATION=0
-          LAST_PHASE=""
-          
-          # Wait for worker to boot
-          echo "Waiting for worker to become reachable..."
-          for i in {1..10}; do
-            if ssh -i ~/.ssh/mapserver-ec2.pem -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
-                ubuntu@$WORKER_IP 'echo OK' 2>/dev/null; then
-              echo "✅ Worker is reachable"
-              break
-            fi
-            echo "  Attempt $i/10..."
-            sleep 30
-          done
-          
-          while [ $ITERATION -lt $MAX_ITERATIONS ]; do
-            ITERATION=$((ITERATION + 1))
-            
-            # Check for completion marker
-            if ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
-                ubuntu@$WORKER_IP 'test -f /data/output/DONE' 2>/dev/null; then
-              echo "✅ Generation complete!"
-              break
-            fi
-            
-            # Fetch progress JSON
-            PROGRESS=$(ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
-              ubuntu@$WORKER_IP 'cat /data/output/progress.json 2>/dev/null' || echo '{}')
-            
-            if [ -n "$PROGRESS" ] && [ "$PROGRESS" != "{}" ]; then
-              PHASE=$(echo "$PROGRESS" | jq -r '.phase // "unknown"')
-              STATUS=$(echo "$PROGRESS" | jq -r '.status // "unknown"')
-              DETAILS=$(echo "$PROGRESS" | jq -r '.details // ""')
-              PERCENT=$(echo "$PROGRESS" | jq -r '.percent // 0')
-              
-              # Only log when phase changes or every 5 iterations
-              if [ "$PHASE" != "$LAST_PHASE" ] || [ $((ITERATION % 5)) -eq 0 ]; then
-                echo "[$ITERATION/$MAX_ITERATIONS] [$PERCENT%] $PHASE: $STATUS - $DETAILS"
-                LAST_PHASE="$PHASE"
-              fi
-            else
-              echo "[$ITERATION/$MAX_ITERATIONS] Waiting for progress data..."
-            fi
-            
-            sleep 120  # 2 min between checks
-          done
-          
-          if [ $ITERATION -ge $MAX_ITERATIONS ]; then
-            echo "❌ Timeout after 2 hours"
-            # Show final log for debugging
-            echo "--- Final worker log ---"
-            ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
-              ubuntu@$WORKER_IP 'tail -50 /var/log/hillshade-gen.log' || true
-            exit 1
-          fi
-          
-          echo "::endgroup::"
-      
-      - name: Download results from S3
-        id: download
-        env:
-          COUNTY: ${{ matrix.request.county }}
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
-          WORKER_IP: ${{ steps.launch.outputs.worker_ip }}
-        run: |
-          set -x
-          
-          echo "::group::Downloading $COUNTY mbtiles"
-          
-          mkdir -p /tmp/tiles
-          
-          # Try S3 first (fastest, uses worker's upload)
-          echo "Attempting S3 download..."
-          if aws s3 sync s3://$S3_BUCKET/${COUNTY}/mbtiles/ /tmp/tiles/ \
-              --exclude "*" --include "*.mbtiles" 2>&1 | tee /tmp/s3-download.log; then
-            
-            TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
-            
-            if [ "$TILE_COUNT" -gt 0 ]; then
-              echo "✅ Downloaded $TILE_COUNT tiles from S3"
-              ls -lh /tmp/tiles/
-              echo "tile_count=$TILE_COUNT" >> $GITHUB_OUTPUT
-              echo "source=s3" >> $GITHUB_OUTPUT
-              echo "::endgroup::"
-              exit 0
-            else
-              echo "⚠️  S3 sync succeeded but no tiles found"
-            fi
-          else
-            echo "⚠️  S3 download failed"
-            cat /tmp/s3-download.log
-          fi
-          
-          # Fallback: Download directly from worker via SCP
-          echo "Falling back to direct worker download via SCP..."
-          
-          # Wait for worker to finish if still running
-          for i in {1..10}; do
-            if ssh -i ~/.ssh/mapserver-ec2.pem -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
-                ubuntu@$WORKER_IP 'test -f /data/output/DONE' 2>/dev/null; then
-              echo "✅ Worker completed"
-              break
-            fi
-            echo "  Waiting for worker completion... ($i/10)"
-            sleep 30
-          done
-          
-          # SCP all mbtiles from worker
-          echo "Downloading tiles from worker..."
-          scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -r \
-            ubuntu@$WORKER_IP:/data/output/${COUNTY}/*/*.mbtiles /tmp/tiles/ || {
-              echo "❌ SCP download failed"
-              echo "Worker contents:"
-              ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
-                ubuntu@$WORKER_IP 'find /data/output -name "*.mbtiles" -ls' || true
-              exit 1
-            }
-          
-          TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
-          echo "✅ Downloaded $TILE_COUNT tiles from worker"
-          ls -lh /tmp/tiles/
-          echo "tile_count=$TILE_COUNT" >> $GITHUB_OUTPUT
-          echo "source=worker" >> $GITHUB_OUTPUT
-          
-          echo "::endgroup::"
-      
-      - name: Upload to tile server
-        if: steps.download.outputs.tile_count > 0
-        env:
-          COUNTY: ${{ matrix.request.county }}
-          TILE_SERVER_SSH: ${{ secrets.TILE_SERVER_SSH }}
-          TILE_COUNT: ${{ steps.download.outputs.tile_count }}
-        run: |
-          set -x
-          
-          echo "::group::Uploading $TILE_COUNT tiles to tile server"
-          
-          UPLOADED=0
-          FAILED=0
-          
-          for mbtiles in /tmp/tiles/*.mbtiles; do
-            if [ -f "$mbtiles" ]; then
-              basename=$(basename "$mbtiles")
-              size=$(du -h "$mbtiles" | cut -f1)
-              echo "Uploading $basename ($size)..."
-              
-              if scp -i ~/.ssh/mapserver-ec2.pem \
-                  "$mbtiles" \
-                  "$TILE_SERVER_SSH:/data/tiles/" 2>&1 | tee /tmp/upload-${basename}.log; then
-                echo "✅ Uploaded $basename"
-                UPLOADED=$((UPLOADED + 1))
-              else
-                echo "❌ Failed to upload $basename"
-                cat /tmp/upload-${basename}.log
-                FAILED=$((FAILED + 1))
-              fi
-            fi
-          done
-          
-          echo ""
-          echo "Upload summary: $UPLOADED uploaded, $FAILED failed"
-          
-          if [ $FAILED -gt 0 ]; then
-            echo "⚠️  Some uploads failed, but continuing..."
-          fi
-          
-          if [ $UPLOADED -gt 0 ]; then
-            # Restart mbtileserver to pick up new tiles
-            echo "Restarting mbtileserver..."
-            if ssh -i ~/.ssh/mapserver-ec2.pem "$TILE_SERVER_SSH" \
-                'cd /data && sudo docker compose restart mbtileserver' 2>&1; then
-              echo "✅ mbtileserver restarted"
-            else
-              echo "⚠️  mbtileserver restart failed (tiles uploaded but not indexed yet)"
-            fi
-          fi
-          
-          echo "::endgroup::"
-          
-          # Fail if no tiles were uploaded
-          if [ $UPLOADED -eq 0 ]; then
-            echo "❌ No tiles uploaded successfully"
-            exit 1
-          fi
-      
-      - name: Update requests.yaml status
-        run: |
-          set -x
-          
-          echo "::group::Marking ${{ matrix.request.county }} as completed"
-          
           python3 << 'EOF'
-          import yaml
-          import os
+          import yaml, os
           
           county = os.environ['COUNTY']
-          dem = os.environ['DEM']
           styles = os.environ['STYLES'].split(',')
           exags = os.environ['EXAGGERATIONS'].split(',')
           
@@ -449,75 +134,28 @@ jobs:
               if req['county'] == county and req.get('status') == 'pending':
                   req['status'] = 'completed'
                   
-                  # Generate preview URLs for each style/exag combo
+                  # Generate preview URLs
                   previews = []
                   for style in styles:
                       for exag in exags:
-                          tile_name = f"{county}-{dem}-{style}-{exag}x-tms"
+                          tile_name = f"{county}-dtm-{style}-{exag}x-tms"
                           url = f"https://exaggeratedrelief.com/services/{tile_name}/map"
                           previews.append(url)
                   
                   req['deployed'] = previews[0] if len(previews) == 1 else previews
                   req['generated_at'] = os.environ.get('GITHUB_RUN_STARTED_AT', '')
-                  req['run_id'] = os.environ.get('GITHUB_RUN_ID', '')
           
           with open('requests.yaml', 'w') as f:
               yaml.dump(data, f, default_flow_style=False, sort_keys=False)
-          
-          print(f"✅ Marked {county} as completed")
           EOF
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add requests.yaml
-          git commit -m "Mark ${{ matrix.request.county }} as completed [skip ci]"
-          git push
-          
-          echo "::endgroup::"
+          git commit -m "Mark ${{ matrix.request.county }} as completed [skip ci]" || true
+          git push || true
         env:
           COUNTY: ${{ matrix.request.county }}
-          DEM: ${{ matrix.request.dem }}
           STYLES: ${{ matrix.request.styles }}
           EXAGGERATIONS: ${{ matrix.request.exaggerations }}
           GITHUB_RUN_STARTED_AT: ${{ github.event.head_commit.timestamp }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-      
-      - name: Cleanup EC2 worker
-        if: always()
-        env:
-          WORKER_ID: ${{ steps.launch.outputs.worker_id }}
-        run: |
-          if [ -n "$WORKER_ID" ]; then
-            echo "Terminating worker $WORKER_ID..."
-            aws ec2 terminate-instances --instance-ids "$WORKER_ID" || true
-            echo "✅ Worker terminated"
-          fi
-      
-      - name: Comment on PR
-        if: github.event.pull_request && steps.download.outputs.tile_count > 0
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const county = '${{ matrix.request.county }}';
-            const styles = '${{ matrix.request.styles }}';
-            const exaggerations = '${{ matrix.request.exaggerations }}';
-            const tileCount = '${{ steps.download.outputs.tile_count }}';
-            
-            const comment = `
-            ✅ **Hillshade generation complete for ${county}!**
-            
-            **Tiles generated:** ${tileCount} mbtiles
-            **Styles:** ${styles}
-            **Exaggerations:** ${exaggerations}
-            
-            **Preview:** https://exaggeratedrelief.com/services/${county}-dtm-${styles.split(',')[0]}-${exaggerations.split(',')[0]}x-tms/map
-            
-            Your tiles are now live on exaggeratedrelief.com!
-            `;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
