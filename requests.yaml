@@ -56,3 +56,4 @@ requests:
   #   exaggerations:
   #     - 9
   #   zoom: "10-16"
+# Trigger workflow
