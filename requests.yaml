@@ -1,0 +1,47 @@
+# Hillshade Generation Requests
+# Add your county/region here, open a PR, and it will be auto-generated on merge!
+#
+# Format:
+#   - county: <name>         # Illinois county name (e.g., 'cook', 'dupage')
+#     dem: dtm|dsm           # Digital terrain model (bare earth) or surface model
+#     styles:                # One or more styles: dark, light, tactical, terrain, gray
+#       - dark
+#     exaggerations:         # Vertical exaggeration factors (1-30)
+#       - 9
+#     zoom: "10-16"          # Zoom range (optional, default: 10-16)
+#     priority: normal       # normal or high (high uses on-demand instead of spot)
+#
+# Examples:
+
+requests:
+  # DuPage County - dark hillshade at 9x (COMPLETED)
+  - county: dupage
+    dem: dtm
+    styles:
+      - dark
+    exaggerations:
+      - 9
+    zoom: "10-16"
+    status: completed
+    deployed: https://exaggeratedrelief.com/services/dupage-dtm-dark-9x-tms/map
+    
+  # Cook County - multiple styles and exaggerations
+  - county: cook
+    dem: dtm
+    styles:
+      - dark
+      - light
+    exaggerations:
+      - 3
+      - 9
+    zoom: "10-16"
+    status: pending
+    
+  # Add your request below (copy the template):
+  # - county: <your-county>
+  #   dem: dtm
+  #   styles:
+  #     - dark
+  #   exaggerations:
+  #     - 9
+  #   zoom: "10-16"

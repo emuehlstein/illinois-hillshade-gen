@@ -1,0 +1,207 @@
+name: Generate Hillshades
+
+on:
+  push:
+    branches: [main, v2-simmon]
+    paths:
+      - 'requests.yaml'
+  workflow_dispatch:
+    inputs:
+      county:
+        description: 'County name to generate'
+        required: true
+      styles:
+        description: 'Styles (comma-separated)'
+        default: 'dark'
+      exaggerations:
+        description: 'Exaggerations (comma-separated)'
+        default: '9'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      counties: ${{ steps.parse.outputs.counties }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      
+      - name: Parse pending requests
+        id: parse
+        run: |
+          # Extract pending/new requests from requests.yaml
+          python3 << 'EOF'
+          import yaml, json, sys
+          
+          with open('requests.yaml') as f:
+              data = yaml.safe_load(f)
+          
+          pending = [
+              {
+                  'county': r['county'],
+                  'dem': r.get('dem', 'dtm'),
+                  'styles': ','.join(r.get('styles', ['dark'])),
+                  'exaggerations': ','.join(str(e) for e in r.get('exaggerations', [9])),
+                  'zoom': r.get('zoom', '10-16'),
+                  'priority': r.get('priority', 'normal')
+              }
+              for r in data.get('requests', [])
+              if r.get('status') == 'pending'
+          ]
+          
+          print(f"::set-output name=counties::{json.dumps(pending)}")
+          print(f"Found {len(pending)} pending request(s)")
+          EOF
+
+  generate:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.counties != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        request: ${{ fromJson(needs.detect-changes.outputs.counties) }}
+      max-parallel: 2  # Limit concurrent EC2 instances
+      fail-fast: false
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+      
+      - name: Install dependencies
+        run: |
+          pip install pyyaml boto3
+      
+      - name: Launch EC2 worker
+        id: launch
+        env:
+          COUNTY: ${{ matrix.request.county }}
+          DEM: ${{ matrix.request.dem }}
+          STYLES: ${{ matrix.request.styles }}
+          EXAGGERATIONS: ${{ matrix.request.exaggerations }}
+          ZOOM: ${{ matrix.request.zoom }}
+          PRIORITY: ${{ matrix.request.priority }}
+          SECURITY_GROUP: ${{ secrets.AWS_SECURITY_GROUP }}
+          KEY_PAIR_NAME: ${{ secrets.AWS_KEY_PAIR_NAME }}
+          IAM_INSTANCE_PROFILE: ${{ secrets.AWS_IAM_INSTANCE_PROFILE }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          TILE_SERVER_PRIVATE_IP: ${{ secrets.TILE_SERVER_PRIVATE_IP }}
+        run: |
+          cd aws
+          # Set spot vs on-demand based on priority
+          if [ "$PRIORITY" = "high" ]; then
+            SPOT_FLAG=""
+          else
+            SPOT_FLAG="--spot"
+          fi
+          
+          ./generate-aws.sh "$COUNTY" \
+            --dem "$DEM" \
+            --style "$STYLES" \
+            --exaggeration "$EXAGGERATIONS" \
+            --zoom "$ZOOM" \
+            $SPOT_FLAG
+      
+      - name: Wait for completion and pull results
+        id: pull
+        env:
+          COUNTY: ${{ matrix.request.county }}
+        run: |
+          # Monitor worker via SSH (poll every 2 min, 2 hour timeout)
+          WORKER_IP=$(cat /tmp/hillshade-worker-${COUNTY}.env | grep WORKER_IP | cut -d= -f2)
+          echo "Worker: $WORKER_IP"
+          
+          for i in {1..60}; do
+            if ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
+                ubuntu@$WORKER_IP 'test -f /data/output/DONE' 2>/dev/null; then
+              echo "Generation complete!"
+              break
+            fi
+            echo "Still running... (check $i/60)"
+            sleep 120
+          done
+          
+          # Pull via S3 (cloud-to-cloud, no local hop)
+          cd aws
+          ./pull-aws-tiles-s3.sh "$COUNTY"
+      
+      - name: Upload to tile server
+        env:
+          COUNTY: ${{ matrix.request.county }}
+          TILE_SERVER_SSH: ${{ secrets.TILE_SERVER_SSH }}
+          TILE_SERVER_KEY: ${{ secrets.TILE_SERVER_SSH_KEY }}
+        run: |
+          # SCP mbtiles from S3 download to tile server
+          for mbtiles in /tmp/*.mbtiles; do
+            scp -i <(echo "$TILE_SERVER_KEY") \
+              "$mbtiles" \
+              "$TILE_SERVER_SSH:/data/tiles/"
+          done
+          
+          # Restart mbtileserver
+          ssh -i <(echo "$TILE_SERVER_KEY") "$TILE_SERVER_SSH" \
+            'cd /data && sudo docker compose restart mbtileserver'
+      
+      - name: Update requests.yaml status
+        run: |
+          # Mark request as completed
+          python3 << 'EOF'
+          import yaml
+          
+          with open('requests.yaml') as f:
+              data = yaml.safe_load(f)
+          
+          for req in data['requests']:
+              if req['county'] == '${{ matrix.request.county }}' and req.get('status') == 'pending':
+                  req['status'] = 'completed'
+                  req['deployed'] = f"https://exaggeratedrelief.com/services/{req['county']}-{req['dem']}-{req['styles'][0]}-{req['exaggerations'][0]}x-tms/map"
+                  req['generated_at'] = '${{ github.event.head_commit.timestamp }}'
+                  req['pr'] = '${{ github.event.pull_request.html_url }}'
+          
+          with open('requests.yaml', 'w') as f:
+              yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+          EOF
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add requests.yaml
+          git commit -m "Mark ${{ matrix.request.county }} as completed"
+          git push
+      
+      - name: Comment on PR
+        if: github.event.pull_request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const county = '${{ matrix.request.county }}';
+            const styles = '${{ matrix.request.styles }}';
+            const exaggerations = '${{ matrix.request.exaggerations }}';
+            
+            const comment = `
+            ✅ **Hillshade generation complete!**
+            
+            **County:** ${county}
+            **Styles:** ${styles}
+            **Exaggerations:** ${exaggerations}
+            
+            **Preview:** https://exaggeratedrelief.com/services/${county}-dtm-${styles.split(',')[0]}-${exaggerations.split(',')[0]}x-tms/map
+            
+            Your tiles are now live on exaggeratedrelief.com!
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
