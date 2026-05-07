@@ -304,56 +304,127 @@ jobs:
         env:
           COUNTY: ${{ matrix.request.county }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          WORKER_IP: ${{ steps.launch.outputs.worker_ip }}
         run: |
           set -x
           
-          echo "::group::Downloading $COUNTY mbtiles from S3"
+          echo "::group::Downloading $COUNTY mbtiles"
           
           mkdir -p /tmp/tiles
           
-          # Download all mbtiles for this county
-          aws s3 ls s3://$S3_BUCKET/${COUNTY}/ --recursive | grep '\.mbtiles$' || true
+          # Try S3 first (fastest, uses worker's upload)
+          echo "Attempting S3 download..."
+          if aws s3 sync s3://$S3_BUCKET/${COUNTY}/mbtiles/ /tmp/tiles/ \
+              --exclude "*" --include "*.mbtiles" 2>&1 | tee /tmp/s3-download.log; then
+            
+            TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
+            
+            if [ "$TILE_COUNT" -gt 0 ]; then
+              echo "✅ Downloaded $TILE_COUNT tiles from S3"
+              ls -lh /tmp/tiles/
+              echo "tile_count=$TILE_COUNT" >> $GITHUB_OUTPUT
+              echo "source=s3" >> $GITHUB_OUTPUT
+              echo "::endgroup::"
+              exit 0
+            else
+              echo "⚠️  S3 sync succeeded but no tiles found"
+            fi
+          else
+            echo "⚠️  S3 download failed"
+            cat /tmp/s3-download.log
+          fi
           
-          aws s3 sync s3://$S3_BUCKET/${COUNTY}/mbtiles/ /tmp/tiles/ \
-            --exclude "*" --include "*.mbtiles"
+          # Fallback: Download directly from worker via SCP
+          echo "Falling back to direct worker download via SCP..."
           
-          echo "Downloaded tiles:"
+          # Wait for worker to finish if still running
+          for i in {1..10}; do
+            if ssh -i ~/.ssh/mapserver-ec2.pem -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+                ubuntu@$WORKER_IP 'test -f /data/output/DONE' 2>/dev/null; then
+              echo "✅ Worker completed"
+              break
+            fi
+            echo "  Waiting for worker completion... ($i/10)"
+            sleep 30
+          done
+          
+          # SCP all mbtiles from worker
+          echo "Downloading tiles from worker..."
+          scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -r \
+            ubuntu@$WORKER_IP:/data/output/${COUNTY}/*/*.mbtiles /tmp/tiles/ || {
+              echo "❌ SCP download failed"
+              echo "Worker contents:"
+              ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
+                ubuntu@$WORKER_IP 'find /data/output -name "*.mbtiles" -ls' || true
+              exit 1
+            }
+          
+          TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
+          echo "✅ Downloaded $TILE_COUNT tiles from worker"
           ls -lh /tmp/tiles/
-          
-          # Save tile list for next step
-          ls /tmp/tiles/*.mbtiles > /tmp/tiles-${COUNTY}.txt
-          echo "tile_count=$(wc -l < /tmp/tiles-${COUNTY}.txt)" >> $GITHUB_OUTPUT
+          echo "tile_count=$TILE_COUNT" >> $GITHUB_OUTPUT
+          echo "source=worker" >> $GITHUB_OUTPUT
           
           echo "::endgroup::"
       
       - name: Upload to tile server
+        if: steps.download.outputs.tile_count > 0
         env:
           COUNTY: ${{ matrix.request.county }}
           TILE_SERVER_SSH: ${{ secrets.TILE_SERVER_SSH }}
+          TILE_COUNT: ${{ steps.download.outputs.tile_count }}
         run: |
           set -x
           
-          echo "::group::Uploading $COUNTY tiles to tile server"
+          echo "::group::Uploading $TILE_COUNT tiles to tile server"
+          
+          UPLOADED=0
+          FAILED=0
           
           for mbtiles in /tmp/tiles/*.mbtiles; do
             if [ -f "$mbtiles" ]; then
               basename=$(basename "$mbtiles")
-              echo "Uploading $basename..."
+              size=$(du -h "$mbtiles" | cut -f1)
+              echo "Uploading $basename ($size)..."
               
-              scp -i ~/.ssh/mapserver-ec2.pem \
-                "$mbtiles" \
-                "$TILE_SERVER_SSH:/data/tiles/"
-              
-              echo "✅ Uploaded $basename"
+              if scp -i ~/.ssh/mapserver-ec2.pem \
+                  "$mbtiles" \
+                  "$TILE_SERVER_SSH:/data/tiles/" 2>&1 | tee /tmp/upload-${basename}.log; then
+                echo "✅ Uploaded $basename"
+                UPLOADED=$((UPLOADED + 1))
+              else
+                echo "❌ Failed to upload $basename"
+                cat /tmp/upload-${basename}.log
+                FAILED=$((FAILED + 1))
+              fi
             fi
           done
           
-          # Restart mbtileserver to pick up new tiles
-          echo "Restarting mbtileserver..."
-          ssh -i ~/.ssh/mapserver-ec2.pem "$TILE_SERVER_SSH" \
-            'cd /data && sudo docker compose restart mbtileserver'
+          echo ""
+          echo "Upload summary: $UPLOADED uploaded, $FAILED failed"
+          
+          if [ $FAILED -gt 0 ]; then
+            echo "⚠️  Some uploads failed, but continuing..."
+          fi
+          
+          if [ $UPLOADED -gt 0 ]; then
+            # Restart mbtileserver to pick up new tiles
+            echo "Restarting mbtileserver..."
+            if ssh -i ~/.ssh/mapserver-ec2.pem "$TILE_SERVER_SSH" \
+                'cd /data && sudo docker compose restart mbtileserver' 2>&1; then
+              echo "✅ mbtileserver restarted"
+            else
+              echo "⚠️  mbtileserver restart failed (tiles uploaded but not indexed yet)"
+            fi
+          fi
           
           echo "::endgroup::"
+          
+          # Fail if no tiles were uploaded
+          if [ $UPLOADED -eq 0 ]; then
+            echo "❌ No tiles uploaded successfully"
+            exit 1
+          fi
       
       - name: Update requests.yaml status
         run: |
