@@ -100,19 +100,14 @@ jobs:
           SSH_KEY: ${{ secrets.TILE_SERVER_SSH_KEY }}
         run: |
           cd aws
-          # Set spot vs on-demand based on priority
-          if [ "$PRIORITY" = "high" ]; then
-            SPOT_FLAG=""
-          else
-            SPOT_FLAG="--spot"
-          fi
+          # Use on-demand by default (spot capacity issues in GitHub Actions)
+          # Users can set priority: high in requests.yaml for guaranteed capacity
           
           ./generate-aws.sh "$COUNTY" \
             --dem "$DEM" \
             --style "$STYLES" \
             --exaggeration "$EXAGGERATIONS" \
-            --zoom "$ZOOM" \
-            $SPOT_FLAG
+            --zoom "$ZOOM"
       
       - name: Wait for completion and pull results
         id: pull
