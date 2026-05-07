@@ -91,11 +91,13 @@ jobs:
           EXAGGERATIONS: ${{ matrix.request.exaggerations }}
           ZOOM: ${{ matrix.request.zoom }}
           PRIORITY: ${{ matrix.request.priority }}
+          WORKER_INSTANCE_TYPE: c7g.2xlarge
           SECURITY_GROUP: ${{ secrets.AWS_SECURITY_GROUP }}
           KEY_PAIR_NAME: ${{ secrets.AWS_KEY_PAIR_NAME }}
           IAM_INSTANCE_PROFILE: ${{ secrets.AWS_IAM_INSTANCE_PROFILE }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           TILE_SERVER_PRIVATE_IP: ${{ secrets.TILE_SERVER_PRIVATE_IP }}
+          SSH_KEY: ${{ secrets.TILE_SERVER_SSH_KEY }}
         run: |
           cd aws
           # Set spot vs on-demand based on priority
