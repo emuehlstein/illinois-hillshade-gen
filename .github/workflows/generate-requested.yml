@@ -36,7 +36,7 @@ jobs:
         run: |
           pip install pyyaml
           python3 << 'EOF'
-          import yaml, json, sys
+          import yaml, json, sys, os
           
           with open('requests.yaml') as f:
               data = yaml.safe_load(f)
