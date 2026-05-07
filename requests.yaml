@@ -64,3 +64,4 @@ requests:
 # Test with IAM fix and error handling
 # Retry with hardcoded AMI
 # Test with correct us-east-2 AMI
+# Test with iam:PassRole permission
