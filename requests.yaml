@@ -1,13 +1,11 @@
-# Hillshade Generation Requests
-# Add your county/region here, open a PR, and it will be auto-generated on merge!
-
 requests:
-  # Putnam County - CI/CD test (small county)
-  - county: putnam
-    dem: dtm
-    styles:
-      - dark
-    exaggerations:
-      - 9
-    zoom: "10-16"
-    status: pending
+- county: putnam
+  dem: dtm
+  styles:
+  - dark
+  exaggerations:
+  - 9
+  zoom: 10-16
+  status: completed
+  deployed: https://exaggeratedrelief.com/services/putnam-dtm-dark-9x-tms/map
+  generated_at: '2026-05-07T18:45:26-05:00'
