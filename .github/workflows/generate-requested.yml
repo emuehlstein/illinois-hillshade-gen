@@ -156,36 +156,30 @@ jobs:
             # Collect progress stats via SSH
             echo "[$ITERATION/$MAX_ITERATIONS] Worker state: $WORKER_STATE"
             
+            # Create progress script
+            cat > /tmp/check-progress.sh << 'EOF'
+#!/bin/bash
+DISK_USED=$(df -h /data | tail -1 | awk '{print $3}')
+DISK_PCT=$(df -h /data | tail -1 | awk '{print $5}')
+CPU_LOAD=$(uptime | awk -F'load average:' '{print $2}' | cut -d, -f1 | xargs)
+MBTILES_COUNT=$(find /data/output -name "*.mbtiles" 2>/dev/null | wc -l)
+MBTILES_SIZE=$(du -sh /data/output 2>/dev/null | cut -f1 || echo "0")
+if [ -f /var/log/hillshade-gen.log ]; then
+  LAST_LOG=$(tail -1 /var/log/hillshade-gen.log 2>/dev/null | cut -c1-100 || echo "(no log)")
+else
+  LAST_LOG="(log not created yet)"
+fi
+if [ -f /data/output/DONE ]; then
+  echo "   🎉 DONE marker found!"
+fi
+echo "   💾 Disk: $DISK_USED ($DISK_PCT full)"
+echo "   🖥️  CPU load: $CPU_LOAD"
+echo "   📦 Output: $MBTILES_COUNT mbtiles ($MBTILES_SIZE)"
+echo "   📋 Latest: $LAST_LOG"
+EOF
+            
             ssh -i ~/.ssh/worker.pem -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
-                ubuntu@$WORKER_IP 'bash -s' 2>/dev/null << 'REMOTE_STATS'
-              # Disk usage
-              DISK_USED=$(df -h /data | tail -1 | awk '{print $3}')
-              DISK_PCT=$(df -h /data | tail -1 | awk '{print $5}')
-              
-              # CPU load
-              CPU_LOAD=$(uptime | awk -F'load average:' '{print $2}' | cut -d, -f1 | xargs)
-              
-              # Output files
-              MBTILES_COUNT=$(find /data/output -name "*.mbtiles" 2>/dev/null | wc -l)
-              MBTILES_SIZE=$(du -sh /data/output 2>/dev/null | cut -f1 || echo "0")
-              
-              # Last log activity
-              if [ -f /var/log/hillshade-gen.log ]; then
-                LAST_LOG=$(tail -1 /var/log/hillshade-gen.log 2>/dev/null | cut -c1-100 || echo "(no log)")
-              else
-                LAST_LOG="(log not created yet)"
-              fi
-              
-              # DONE marker check
-              if [ -f /data/output/DONE ]; then
-                echo "   🎉 DONE marker found!"
-              fi
-              
-              echo "   💾 Disk: $DISK_USED ($DISK_PCT full)"
-              echo "   🖥️  CPU load: $CPU_LOAD"
-              echo "   📦 Output: $MBTILES_COUNT mbtiles ($MBTILES_SIZE)"
-              echo "   📋 Latest: $LAST_LOG"
-REMOTE_STATS
+                ubuntu@$WORKER_IP 'bash -s' < /tmp/check-progress.sh 2>/dev/null || echo "   (SSH failed)"
             
             sleep 120
           done
