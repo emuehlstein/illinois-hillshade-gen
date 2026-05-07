@@ -108,14 +108,97 @@ jobs:
             --exaggeration "$EXAGGERATIONS" \
             --zoom "$ZOOM" 2>&1 | tee /tmp/generate-${COUNTY}.log
           
-          # Upload logs to S3
-          if [ -f "/tmp/generate-${COUNTY}.log" ]; then
-            aws s3 cp /tmp/generate-${COUNTY}.log \
-              s3://$S3_BUCKET/ci/logs/${COUNTY}-$(date +%Y%m%d-%H%M%S).log
-            echo "📋 Logs uploaded to S3"
+          # Extract worker info
+          if [ -f "/tmp/hillshade-worker-${COUNTY}.env" ]; then
+            source /tmp/hillshade-worker-${COUNTY}.env
+            echo "Worker: $WORKER_IP ($WORKER_INSTANCE_ID)"
+          else
+            echo "❌ Worker info not found, script may have failed"
+            aws s3 cp /tmp/generate-${COUNTY}.log s3://$S3_BUCKET/ci/logs/${COUNTY}-failed-$(date +%Y%m%d-%H%M%S).log || true
+            exit 1
           fi
           
+          # Wait for worker to finish (poll every 2 min, max 2 hours)
+          echo "⏳ Waiting for worker to complete generation..."
+          MAX_ITERATIONS=60
+          ITERATION=0
+          
+          while [ $ITERATION -lt $MAX_ITERATIONS ]; do
+            ITERATION=$((ITERATION + 1))
+            
+            # Check if worker still exists
+            WORKER_STATE=$(aws ec2 describe-instances \
+              --instance-ids "$WORKER_INSTANCE_ID" \
+              --query 'Reservations[0].Instances[0].State.Name' \
+              --output text 2>/dev/null || echo "terminated")
+            
+            if [ "$WORKER_STATE" = "terminated" ]; then
+              echo "✅ Worker terminated (generation complete or failed)"
+              break
+            fi
+            
+            echo "[$ITERATION/$MAX_ITERATIONS] Worker state: $WORKER_STATE"
+            sleep 120
+          done
+          
+          if [ $ITERATION -ge $MAX_ITERATIONS ]; then
+            echo "⚠️  Timeout after 2 hours, terminating worker"
+            aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" || true
+          fi
+          
+          # Check S3 for results
+          echo "📥 Checking S3 for results..."
+          aws s3 ls s3://$S3_BUCKET/${COUNTY}/mbtiles/ || {
+            echo "❌ No tiles found in S3"
+            aws s3 cp /tmp/generate-${COUNTY}.log s3://$S3_BUCKET/ci/logs/${COUNTY}-failed-$(date +%Y%m%d-%H%M%S).log || true
+            exit 1
+          }
+          
+          # Download tiles
+          mkdir -p /tmp/tiles
+          aws s3 sync s3://$S3_BUCKET/${COUNTY}/mbtiles/ /tmp/tiles/ \
+            --exclude "*" --include "*.mbtiles"
+          
+          TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
+          if [ "$TILE_COUNT" -eq 0 ]; then
+            echo "❌ Downloaded 0 tiles"
+            exit 1
+          fi
+          
+          echo "✅ Downloaded $TILE_COUNT tile(s) from S3:"
+          ls -lh /tmp/tiles/
+          
+          # Upload success log to S3
+          aws s3 cp /tmp/generate-${COUNTY}.log \
+            s3://$S3_BUCKET/ci/logs/${COUNTY}-success-$(date +%Y%m%d-%H%M%S).log
+          
           echo "✅ Generation complete for $COUNTY"
+      
+      - name: Upload to tile server
+        if: success()
+        env:
+          TILE_SERVER_SSH: ${{ secrets.TILE_SERVER_SSH }}
+        run: |
+          # Setup SSH key
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TILE_SERVER_SSH_KEY }}" > ~/.ssh/tile-server.pem
+          chmod 600 ~/.ssh/tile-server.pem
+          
+          # Upload each tile
+          for mbtiles in /tmp/tiles/*.mbtiles; do
+            if [ -f "$mbtiles" ]; then
+              basename=$(basename "$mbtiles")
+              echo "Uploading $basename..."
+              scp -i ~/.ssh/tile-server.pem -o StrictHostKeyChecking=no \
+                "$mbtiles" "$TILE_SERVER_SSH:/data/tiles/"
+            fi
+          done
+          
+          # Restart mbtileserver
+          ssh -i ~/.ssh/tile-server.pem -o StrictHostKeyChecking=no \
+            "$TILE_SERVER_SSH" 'cd /data && sudo docker compose restart mbtileserver'
+          
+          echo "✅ Tiles deployed to tile server"
       
       - name: Mark as completed
         if: success()
