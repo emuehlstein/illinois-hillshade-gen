@@ -10,9 +10,10 @@ import subprocess
 import tempfile
 import urllib.request
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 from . import counties
+from .cache import Cache
 
 
 def download_county(
@@ -20,21 +21,21 @@ def download_county(
     dem_type: str = "dtm",
     output_path: Path = None,
     bounds: Optional[Tuple[float, float, float, float]] = None,
-    cache_dir: Optional[Path] = None,
+    cache_dir: Optional[Union[str, Path]] = None,
 ) -> Path:
     """
     Download elevation data for a county.
 
     Always downloads the full 1m resolution ZIP from ISGS clearinghouse.
-    If cache_dir is provided, checks for a cached GeoTIFF first and skips
-    the download if found.
+    If cache_dir is provided (local path or s3:// URI), checks for a
+    cached GeoTIFF first and skips the download if found.
 
     Args:
         county: County name (e.g., 'putnam', 'cook')
         dem_type: 'dtm' (bare earth) or 'dsm' (with buildings/trees)
         output_path: Output GeoTIFF path
         bounds: Optional (minlon, minlat, maxlon, maxlat) to clip after download
-        cache_dir: Optional directory to check/store cached DEMs
+        cache_dir: Local path or s3:// URI for caching DEMs
 
     Returns:
         Path to the output GeoTIFF
@@ -47,26 +48,17 @@ def download_county(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    cache = Cache(cache_dir)
+    cache_key = f"dem/{county.lower()}/{county.lower()}_{dem_type.lower()}.tif"
+
     # Check cache first
-    if cache_dir is not None:
-        cache_dir = Path(cache_dir)
-        cached = cache_dir / county.lower() / f"{county.lower()}_{dem_type.lower()}.tif"
-        if cached.exists():
-            if cached != output_path:
-                shutil.copy2(cached, output_path)
-            print(f"\u23e9 Using cached DEM: {cached}")
-            return output_path
+    if cache.pull(cache_key, output_path):
+        return output_path
 
     result = _download_zip(county_info, dem_type, output_path, bounds)
 
     # Persist to cache
-    if cache_dir is not None:
-        cache_dir = Path(cache_dir)
-        cached = cache_dir / county.lower() / f"{county.lower()}_{dem_type.lower()}.tif"
-        cached.parent.mkdir(parents=True, exist_ok=True)
-        if cached != output_path:
-            shutil.copy2(output_path, cached)
-        print(f"\U0001f4be Cached DEM: {cached}")
+    cache.push(output_path, cache_key)
 
     return result
 

@@ -1,21 +1,24 @@
 """
 Reproject DEM to EPSG:4326 for web mapping.
 
-Supports local cache directories. Atomic writes via temp file + rename
+Supports local and S3 cache directories. Atomic writes via temp file + rename
 to prevent partial/corrupt outputs on interruption.
 """
 
+import os
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
+
+from .cache import Cache
 
 
 def reproject_to_4326(
     input_path: Path,
     output_path: Path,
-    cache_dir: Optional[Path] = None,
+    cache_dir: Optional[Union[str, Path]] = None,
     force: bool = False,
 ) -> Path:
     """
@@ -27,8 +30,7 @@ def reproject_to_4326(
     Args:
         input_path: Source DEM GeoTIFF (any CRS)
         output_path: Destination reprojected GeoTIFF
-        cache_dir: Optional directory to check/store cached reprojected DEMs.
-                   Cache key is the input filename stem + "_4326.tif".
+        cache_dir: Local path or s3:// URI for caching reprojected DEMs
         force: Reproject even if cached version exists
 
     Returns:
@@ -42,17 +44,12 @@ def reproject_to_4326(
         print(f"\u23e9 Using existing: {output_path}")
         return output_path
 
+    cache = Cache(cache_dir)
+    cache_key = f"intermediates/{input_path.stem}_4326.tif"
+
     # Check cache
-    cached = None
-    if cache_dir is not None:
-        cache_dir = Path(cache_dir)
-        cached = cache_dir / f"{input_path.stem}_4326.tif"
-        if cached.exists() and not force:
-            if cached != output_path:
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(cached, output_path)
-            print(f"\u23e9 Using cached reprojection: {cached}")
-            return output_path
+    if not force and cache.pull(cache_key, output_path):
+        return output_path
 
     # Reproject atomically: write to temp, then rename
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -61,8 +58,6 @@ def reproject_to_4326(
         dir=output_path.parent,
         prefix=f".{output_path.stem}_tmp_",
     )
-    # Close the fd immediately — gdalwarp writes to the path
-    import os
     os.close(tmp_fd)
     tmp_path = Path(tmp_path)
 
@@ -86,14 +81,10 @@ def reproject_to_4326(
         print(f"\u2713 Reprojected: {output_path}")
 
         # Persist to cache
-        if cached is not None and cached != output_path:
-            cached.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(output_path, cached)
-            print(f"\U0001f4be Cached reprojection: {cached}")
+        cache.push(output_path, cache_key)
 
         return output_path
 
     except Exception:
-        # Clean up temp file on failure
         tmp_path.unlink(missing_ok=True)
         raise

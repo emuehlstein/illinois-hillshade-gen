@@ -63,7 +63,7 @@ def run(
     exaggeration: Optional[str] = typer.Option(None, "--exaggeration", "-z", help="Vertical exaggeration factor or 'auto'"),
     zoom: Optional[str] = typer.Option(None, "--zoom", help="Zoom range (e.g., '10-16')"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
-    cache_dir: Optional[Path] = typer.Option(None, "--cache-dir", help="Directory for intermediate files (raw DEM, reprojected TIF, hillshade). Defaults to output dir."),
+    cache_dir: Optional[str] = typer.Option(None, "--cache-dir", help="Local path or s3:// URI for intermediate file caching."),
     source_zip: Optional[Path] = typer.Option(None, "--source-zip", help="Use a local ZIP instead of downloading. Still extracts and converts."),
     source: Optional[Path] = typer.Option(None, "--source", help="Use an existing GeoTIFF directly. Skips download and extraction."),
     pmtiles: bool = typer.Option(False, "--pmtiles", help="Also generate PMTiles output"),
@@ -134,9 +134,11 @@ def run(
     output_dir = output or Path(f"./{county.lower()}-hillshade")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    intermediates_dir = cache_dir or output_dir
-    if cache_dir:
-        cache_dir.mkdir(parents=True, exist_ok=True)
+    # For S3 cache dirs, intermediates still go to local output_dir
+    # The Cache class handles S3 push/pull transparently
+    if cache_dir and not str(cache_dir).startswith("s3://"):
+        Path(cache_dir).mkdir(parents=True, exist_ok=True)
+    intermediates_dir = output_dir if (not cache_dir or str(cache_dir).startswith("s3://")) else Path(cache_dir)
 
     # Parse shading mode
     try:
@@ -345,7 +347,7 @@ def download_cmd(
     dem: str = typer.Option("dtm", "--dem", "-d", help="DEM type: dtm or dsm"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output path"),
     source_zip: Optional[Path] = typer.Option(None, "--source-zip", help="Use a local ZIP instead of downloading from ISGS."),
-    cache_dir: Optional[Path] = typer.Option(None, "--cache-dir", help="Directory to check/store cached DEMs. Skips download if cached."),
+    cache_dir: Optional[str] = typer.Option(None, "--cache-dir", help="Local path or s3:// URI for DEM caching."),
 ):
     """Download (or extract) elevation data for a county (full 1m resolution)."""
     county_info = counties.get_county(county)
@@ -371,7 +373,7 @@ def download_cmd(
 def reproject_cmd(
     input_dem: Path = typer.Argument(..., help="Input DEM GeoTIFF (any CRS)"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output reprojected GeoTIFF. Defaults to {stem}_4326.tif"),
-    cache_dir: Optional[Path] = typer.Option(None, "--cache-dir", help="Directory to check/store cached reprojections."),
+    cache_dir: Optional[str] = typer.Option(None, "--cache-dir", help="Local path or s3:// URI for caching reprojected DEMs."),
     force: bool = typer.Option(False, "--force", help="Reproject even if cached version exists"),
 ):
     """Reproject a DEM to EPSG:4326 (WGS84) for web mapping. Atomic writes."""
@@ -553,7 +555,7 @@ def layers_cmd(
     dem: str = typer.Option("dtm", "--dem", "-d", help="DEM type: dtm or dsm"),
     output: str = typer.Option("aspect,slope,roughness,TRI", "--output", "-o", help="Comma-separated layers to generate: aspect,slope,roughness,TRI"),
     output_dir: Optional[Path] = typer.Option(None, "--output-dir", help="Output directory"),
-    cache_dir: Optional[Path] = typer.Option(None, "--cache-dir", help="Cache directory for intermediate files"),
+    cache_dir: Optional[str] = typer.Option(None, "--cache-dir", help="Local path or s3:// URI for caching intermediate files"),
     source: Optional[Path] = typer.Option(None, "--source", help="Use an existing GeoTIFF directly"),
     json_out: bool = typer.Option(False, "--json", help="Output structured JSON"),
 ):
@@ -571,8 +573,8 @@ def layers_cmd(
 
     # Resolve DEM path (reuse cached reprojected TIF if available)
     cache = cache_dir or out_dir
-    if cache_dir:
-        cache_dir.mkdir(parents=True, exist_ok=True)
+    if cache_dir and not str(cache_dir).startswith("s3://"):
+        Path(cache_dir).mkdir(parents=True, exist_ok=True)
 
     if source:
         dem_path = source
