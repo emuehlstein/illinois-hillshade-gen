@@ -16,6 +16,10 @@ on:
       exaggerations:
         description: 'Exaggerations (comma-separated)'
         default: '9'
+      debug:
+        description: 'Keep EC2 worker alive after completion for troubleshooting'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -44,7 +48,8 @@ jobs:
                   'dem': r.get('dem', 'dtm'),
                   'styles': ','.join(r.get('styles', ['dark'])),
                   'exaggerations': ','.join(str(e) for e in r.get('exaggerations', [9])),
-                  'zoom': r.get('zoom', '10-16')
+                  'zoom': r.get('zoom', '10-16'),
+                  'debug': str(r.get('debug', False)).lower(),
               }
               for r in (data.get('requests', []) if isinstance(data, dict) else data or [])
               if r.get('status') == 'pending'
@@ -90,6 +95,7 @@ jobs:
           IAM_INSTANCE_PROFILE: ${{ secrets.AWS_IAM_INSTANCE_PROFILE }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           WORKER_INSTANCE_TYPE: c7g.2xlarge
+          DEBUG_KEEP_ALIVE: ${{ github.event.inputs.debug || 'false' }}
         run: |
           set -x
           
@@ -178,8 +184,14 @@ jobs:
           done
           
           if [ $ITERATION -ge $MAX_ITERATIONS ]; then
-            echo "⚠️  Timeout after 2 hours, terminating worker"
-            aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" || true
+            echo "⚠️  Timeout after 2 hours"
+            if [ "$DEBUG_KEEP_ALIVE" = "true" ]; then
+              echo "🔧 DEBUG: Keeping worker alive for troubleshooting"
+              echo "   SSH: ssh -i ~/.ssh/mapserver-ec2.pem ubuntu@$WORKER_IP"
+            else
+              echo "Terminating worker..."
+              aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" --region us-east-2 || true
+            fi
           fi
           
           # Download tiles from worker via SCP
@@ -207,7 +219,18 @@ jobs:
             echo "❌ Still no tiles found. Checking worker output structure:"
             ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no ubuntu@$WORKER_IP \
               'find /data/output -type f 2>/dev/null | head -30' || true
+            # Grab full worker logs for debugging
+            ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no ubuntu@$WORKER_IP \
+              'cat /var/log/hillshade-gen.log 2>/dev/null' > /tmp/worker-hillshade-gen.log 2>/dev/null || true
             aws s3 cp /tmp/generate-${COUNTY}.log s3://$S3_BUCKET/ci/logs/${COUNTY}-failed-$(date +%Y%m%d-%H%M%S).log || true
+            aws s3 cp /tmp/worker-hillshade-gen.log s3://$S3_BUCKET/ci/logs/${COUNTY}-worker-$(date +%Y%m%d-%H%M%S).log 2>/dev/null || true
+            if [ "$DEBUG_KEEP_ALIVE" = "true" ]; then
+              echo "🔧 DEBUG: Worker kept alive at $WORKER_IP for troubleshooting"
+              echo "   ssh -i ~/.ssh/mapserver-ec2.pem ubuntu@$WORKER_IP"
+              echo "   ⚠️  Terminate when done: aws ec2 terminate-instances --instance-ids $WORKER_INSTANCE_ID --region us-east-2"
+            else
+              aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" --region us-east-2 || true
+            fi
             exit 1
           fi
           
