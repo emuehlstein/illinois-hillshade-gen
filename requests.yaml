@@ -13,3 +13,4 @@ requests:
 # Fixed YAML syntax
 # Test with inline SSH progress check
 # SSH key fix test
+# DONE detection fix
