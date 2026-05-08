@@ -208,9 +208,17 @@ for COUNTY in "\$@"; do
                 continue
             fi
 
+            # Detect if STYLE is a theme name (contains hyphen or matches known themes)
+            STYLE_FLAG="--style"
+            if ilhmp themes --json 2>/dev/null | grep -q "\"\${STYLE}\""; then
+                STYLE_FLAG="--theme"
+            elif [[ "\${STYLE}" == *-* ]] || [[ "\${STYLE}" == "simmon" ]] || [[ "\${STYLE}" == "grayscale" ]]; then
+                STYLE_FLAG="--theme"
+            fi
+
             ilhmp run "\${COUNTY}" \
                 --dem "__DEM__" \
-                --style "\${STYLE}" \
+                \${STYLE_FLAG} "\${STYLE}" \
                 --exaggeration "\${EXAGG}" \
                 --zoom "__ZOOM__" \
                 --output "\${OUTDIR}" \
