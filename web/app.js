@@ -385,16 +385,20 @@ function renderStatusCard() {
 }
 
 function buildGenerateUrl(countyName) {
-  const base = catalog.generate_url || GENERATE_URL_DEFAULT;
-  const entry = [
+  const yaml = [
+    '# Hillshade Generation Requests',
+    'requests:',
     `  - county: ${state.county}`,
     `    dem: ${state.dem}`,
-    `    theme: ${state.theme}`,
-    `    exaggeration: ${state.exag}`,
-    `    zoom: [${state.zoomMin}, ${state.zoomMax}]`,
+    `    styles:`,
+    `      - ${state.theme}`,
+    `    exaggerations:`,
+    `      - ${state.exag}`,
+    `    zoom: "${state.zoomMin}-${state.zoomMax}"`,
+    `    status: pending`,
   ].join('\n');
-  // Open GitHub edit page; user can paste the entry
-  return base + '#L1';
+  // GitHub new-file URL pre-fills content and opens a PR flow
+  return `https://github.com/emuehlstein/illinois-hillshade-gen/new/main?filename=requests.yaml&value=${encodeURIComponent(yaml)}`;
 }
 
 // ── Preview map ────────────────────────────────────────────────────────────
