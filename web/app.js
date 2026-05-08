@@ -377,7 +377,9 @@ function renderStatusCard() {
         <a class="btn btn-green" href="${generateUrl}" target="_blank">🔧 Generate via PR</a>
       </div>
       <div class="generate-hint">
-        Opens a GitHub PR to <code>requests.yaml</code>.<br/>
+        Request copied to clipboard — paste it at the end of
+        <code>requests.yaml</code> and submit a PR.<br/>
+        Multiple requests can be appended to the same file.<br/>
         Est. time: ~30 min · Est. cost: ~$0.07
       </div>
     `;
@@ -385,9 +387,8 @@ function renderStatusCard() {
 }
 
 function buildGenerateUrl(countyName) {
-  const yaml = [
-    '# Hillshade Generation Requests',
-    'requests:',
+  // Build a YAML snippet the user can append to requests.yaml
+  const entry = [
     `  - county: ${state.county}`,
     `    dem: ${state.dem}`,
     `    styles:`,
@@ -397,8 +398,12 @@ function buildGenerateUrl(countyName) {
     `    zoom: "${state.zoomMin}-${state.zoomMax}"`,
     `    status: pending`,
   ].join('\n');
-  // GitHub new-file URL pre-fills content and opens a PR flow
-  return `https://github.com/emuehlstein/illinois-hillshade-gen/new/main?filename=requests.yaml&value=${encodeURIComponent(yaml)}`;
+
+  // Copy snippet to clipboard and open the edit page
+  try { navigator.clipboard.writeText(entry); } catch (_) {}
+
+  // GitHub edit URL — user appends their request to the existing file
+  return `https://github.com/emuehlstein/illinois-hillshade-gen/edit/main/requests.yaml`;
 }
 
 // ── Preview map ────────────────────────────────────────────────────────────
