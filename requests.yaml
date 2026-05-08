@@ -1,3 +1,6 @@
+# Hillshade Generation Requests
+# Add new requests below and submit a PR. CI generates tiles automatically.
+requests:
   - county: lake
     dem: dtm
     styles:

@@ -46,7 +46,7 @@ jobs:
                   'exaggerations': ','.join(str(e) for e in r.get('exaggerations', [9])),
                   'zoom': r.get('zoom', '10-16')
               }
-              for r in data.get('requests', [])
+              for r in (data.get('requests', []) if isinstance(data, dict) else data or [])
               if r.get('status') == 'pending'
           ]
           
