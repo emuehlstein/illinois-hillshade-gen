@@ -99,6 +99,11 @@ jobs:
           echo "   Exaggerations: $EXAGGERATIONS"
           echo "   Zoom: $ZOOM"
           
+          # Write SSH key before running generate-aws.sh (it needs it for SG rules + monitoring)
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TILE_SERVER_SSH_KEY }}" > ~/.ssh/mapserver-ec2.pem
+          chmod 600 ~/.ssh/mapserver-ec2.pem
+          
           cd aws
           
           # Run the proven generate-aws.sh script
@@ -118,15 +123,10 @@ jobs:
             exit 1
           fi
           
-          # Setup SSH for progress monitoring
-          mkdir -p ~/.ssh
-          echo "${{ secrets.TILE_SERVER_SSH_KEY }}" > ~/.ssh/worker.pem
-          chmod 600 ~/.ssh/worker.pem
-          
-          # Wait for SSH to be ready
+          # Wait for SSH to be ready (key already at ~/.ssh/mapserver-ec2.pem)
           echo "⏳ Waiting for SSH access..."
           for i in {1..30}; do
-            if ssh -i ~/.ssh/worker.pem -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+            if ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
                 ubuntu@$WORKER_IP 'echo ready' 2>/dev/null; then
               echo "✅ SSH ready"
               break
@@ -156,7 +156,7 @@ jobs:
             # Collect progress stats via SSH
             echo "[$ITERATION/$MAX_ITERATIONS] Worker state: $WORKER_STATE"
             
-            ssh -i ~/.ssh/worker.pem -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$WORKER_IP '
+            ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$WORKER_IP '
               df -h /data | tail -1 | awk '"'"'{printf "   💾 Disk: %s (%s full)\n", $3, $5}'"'"'
               uptime | awk -F"load average:" '"'"'{print "   🖥️  CPU load:" $2}'"'"' | cut -d, -f1
               echo "   📦 Output: $(find /data/output -name "*.mbtiles" 2>/dev/null | wc -l) mbtiles ($(du -sh /data/output 2>/dev/null | cut -f1 || echo 0))"
