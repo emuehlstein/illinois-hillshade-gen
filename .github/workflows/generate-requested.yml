@@ -123,6 +123,32 @@ jobs:
           if [ -f "/tmp/hillshade-worker-${COUNTY}.env" ]; then
             source /tmp/hillshade-worker-${COUNTY}.env
             echo "Worker: $WORKER_IP ($WORKER_INSTANCE_ID)"
+            
+            # Write startup manifest to S3 for tracking/cleanup
+            RUN_ID="${COUNTY}-$(date +%Y%m%d-%H%M%S)"
+            cat > /tmp/run-manifest.json << MANIFEST
+          {
+            "run_id": "${RUN_ID}",
+            "county": "${COUNTY}",
+            "dem": "${DEM}",
+            "styles": "${STYLES}",
+            "exaggerations": "${EXAGGERATIONS}",
+            "zoom": "${ZOOM}",
+            "debug": "${DEBUG_KEEP_ALIVE}",
+            "instance_id": "${WORKER_INSTANCE_ID}",
+            "instance_ip": "${WORKER_IP}",
+            "instance_type": "${WORKER_INSTANCE_TYPE}",
+            "github_run_id": "${{ github.run_id }}",
+            "github_run_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "github_sha": "${{ github.sha }}",
+            "github_ref": "${{ github.ref }}",
+            "triggered_by": "${{ github.actor }}",
+            "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "status": "running"
+          }
+          MANIFEST
+            aws s3 cp /tmp/run-manifest.json s3://$S3_BUCKET/ci/runs/${RUN_ID}.json || true
+            echo "📋 Run manifest: s3://$S3_BUCKET/ci/runs/${RUN_ID}.json"
           else
             echo "❌ Worker info not found, script may have failed"
             aws s3 cp /tmp/generate-${COUNTY}.log s3://$S3_BUCKET/ci/logs/${COUNTY}-failed-$(date +%Y%m%d-%H%M%S).log || true
