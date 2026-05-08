@@ -7,365 +7,559 @@
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
             background: #0d1117;
             color: #e6edf3;
+            height: 100vh;
             overflow: hidden;
-        }
-        #map {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-        }
-
-        /* Header bar */
-        .header {
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            z-index: 10;
-            background: linear-gradient(to bottom, rgba(13,17,23,0.95), rgba(13,17,23,0));
-            padding: 16px 24px 40px;
-            pointer-events: none;
-        }
-        .header h1 {
-            font-size: 20px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            pointer-events: auto;
-        }
-        .header h1 span { color: #58a6ff; }
-        .header .subtitle {
-            font-size: 13px;
-            color: #8b949e;
-            margin-top: 2px;
-        }
-
-        /* Controls panel */
-        .controls {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            z-index: 10;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-        }
-        .control-group {
-            background: rgba(13,17,23,0.9);
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 12px;
-            backdrop-filter: blur(8px);
-            min-width: 180px;
-        }
-        .control-group label {
-            display: block;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #8b949e;
-            margin-bottom: 6px;
-        }
-        .control-group select, .control-group input {
-            width: 100%;
-            background: #161b22;
-            border: 1px solid #30363d;
-            color: #e6edf3;
-            padding: 6px 8px;
-            border-radius: 4px;
-            font-size: 13px;
-        }
-        .control-group select:focus, .control-group input:focus {
-            outline: none;
-            border-color: #58a6ff;
         }
 
-        /* County list */
-        .county-list {
-            position: absolute;
-            bottom: 24px;
-            left: 24px;
-            z-index: 10;
-            background: rgba(13,17,23,0.9);
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 12px;
-            backdrop-filter: blur(8px);
-            max-height: 300px;
-            overflow-y: auto;
-            min-width: 200px;
+        /* ── Header ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            flex-shrink: 0;
+            z-index: 20;
         }
-        .county-list h3 {
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        .header h1 .accent { color: #58a6ff; }
+        .header .subtitle {
+            font-size: 12px;
+            color: #8b949e;
+            display: none;
+        }
+        @media (min-width: 640px) { .header .subtitle { display: block; } }
+        .header-actions { display: flex; gap: 8px; }
+        .header-actions a {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            text-decoration: none;
+            font-size: 12px;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .header-actions a:hover { background: #30363d; border-color: #484f58; }
+
+        /* ── Main layout ── */
+        .main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ── Map panel ── */
+        .map-panel {
+            flex: 1;
+            position: relative;
+            min-width: 0;
+        }
+        #selector-map {
+            width: 100%;
+            height: 100%;
+        }
+        .map-hint {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            background: rgba(13,17,23,0.85);
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 6px 10px;
             font-size: 11px;
+            color: #8b949e;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+        .map-legend {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            background: rgba(13,17,23,0.85);
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 11px;
+            color: #8b949e;
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .legend-dot.available { background: #3fb950; }
+        .legend-dot.missing   { background: #484f58; }
+
+        /* ── Config panel ── */
+        .config-panel {
+            width: 300px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            background: #161b22;
+            border-left: 1px solid #30363d;
+            overflow-y: auto;
+        }
+
+        .config-section {
+            padding: 14px 16px;
+            border-bottom: 1px solid #21262d;
+        }
+        .config-section:last-child { border-bottom: none; }
+
+        .config-label {
+            font-size: 10px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.08em;
             color: #8b949e;
             margin-bottom: 8px;
         }
-        .county-item {
+
+        /* County dropdown */
+        select, input[type="number"] {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #e6edf3;
+            padding: 7px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 28px;
+        }
+        input[type="number"] {
+            background-image: none;
+            padding-right: 10px;
+        }
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+
+        /* Radio groups */
+        .radio-group {
+            display: flex;
+            gap: 6px;
+        }
+        .radio-group label {
+            flex: 1;
             display: flex;
             align-items: center;
-            padding: 4px 0;
-            cursor: pointer;
-            font-size: 13px;
-            color: #c9d1d9;
-            transition: color 0.15s;
-        }
-        .county-item:hover { color: #58a6ff; }
-        .county-item .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 8px;
-            flex-shrink: 0;
-        }
-        .county-item .dot.available { background: #3fb950; }
-        .county-item .dot.pending { background: #d29922; }
-        .county-item .dot.missing { background: #484f58; }
-
-        /* Info popup */
-        .info-banner {
-            position: absolute;
-            bottom: 24px;
-            right: 24px;
-            z-index: 10;
-            background: rgba(13,17,23,0.9);
+            justify-content: center;
+            padding: 6px 8px;
+            background: #0d1117;
             border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 12px 16px;
-            backdrop-filter: blur(8px);
+            border-radius: 6px;
+            cursor: pointer;
             font-size: 12px;
             color: #8b949e;
-            max-width: 280px;
+            transition: all 0.15s;
+            user-select: none;
         }
-        .info-banner strong { color: #e6edf3; }
-        .info-banner a { color: #58a6ff; text-decoration: none; }
+        .radio-group input[type="radio"] { display: none; }
+        .radio-group input[type="radio"]:checked + span {
+            /* handled by JS adding .active class to label */
+        }
+        .radio-group label.active {
+            background: #1f6feb;
+            border-color: #388bfd;
+            color: #fff;
+        }
+        .radio-group label:hover:not(.active) {
+            background: #21262d;
+            border-color: #484f58;
+            color: #c9d1d9;
+        }
 
-        /* Loading state */
-        .loading {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 20;
-            text-align: center;
+        /* Zoom row */
+        .zoom-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .loading .spinner {
+        .zoom-row input {
+            flex: 1;
+        }
+        .zoom-sep {
+            color: #484f58;
+            font-size: 12px;
+        }
+
+        /* Divider */
+        .divider {
+            height: 1px;
+            background: #21262d;
+            margin: 0 16px;
+        }
+
+        /* Status card */
+        .status-card {
+            margin: 0;
+        }
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-badge.available {
+            background: rgba(63, 185, 80, 0.15);
+            color: #3fb950;
+            border: 1px solid rgba(63, 185, 80, 0.3);
+        }
+        .status-badge.missing {
+            background: rgba(110, 118, 129, 0.15);
+            color: #8b949e;
+            border: 1px solid rgba(110, 118, 129, 0.3);
+        }
+
+        .tile-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        .meta-row {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            font-size: 12px;
+        }
+        .meta-key {
+            color: #8b949e;
+            min-width: 70px;
+            flex-shrink: 0;
+        }
+        .meta-val { color: #c9d1d9; }
+
+        /* Action buttons */
+        .action-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+            text-decoration: none;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .btn-primary {
+            background: #1f6feb;
+            border-color: #388bfd;
+            color: #fff;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #388bfd;
+        }
+        .btn-secondary {
+            background: #21262d;
+            border-color: #30363d;
+            color: #c9d1d9;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background: #30363d;
+            border-color: #484f58;
+        }
+        .btn-green {
+            background: rgba(63, 185, 80, 0.15);
+            border-color: rgba(63, 185, 80, 0.4);
+            color: #3fb950;
+        }
+        .btn-green:hover:not(:disabled) {
+            background: rgba(63, 185, 80, 0.25);
+        }
+
+        .generate-hint {
+            font-size: 11px;
+            color: #6e7681;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        /* ── Preview map ── */
+        .preview-section {
+            border-top: 1px solid #30363d;
+            background: #0d1117;
+            flex-shrink: 0;
+            transition: height 0.3s ease;
+            overflow: hidden;
+        }
+        .preview-section.collapsed { height: 0; }
+        .preview-section.expanded { height: 320px; }
+
+        .preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+        }
+        .preview-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b949e;
+        }
+        .preview-close {
+            background: none;
+            border: none;
+            color: #8b949e;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        .preview-close:hover { color: #e6edf3; }
+        #preview-map {
+            width: 100%;
+            height: calc(100% - 33px);
+        }
+
+        /* ── Stats bar ── */
+        .stats-bar {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 7px 20px;
+            background: #161b22;
+            border-top: 1px solid #30363d;
+            font-size: 11px;
+            color: #8b949e;
+            flex-shrink: 0;
+        }
+        .stats-bar .stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .stats-bar .stat strong { color: #e6edf3; }
+        .stats-separator { color: #30363d; }
+
+        /* ── Loading overlay ── */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: #0d1117;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            gap: 12px;
+        }
+        #loading-overlay.hidden { display: none; }
+        .spinner {
             width: 32px; height: 32px;
             border: 3px solid #30363d;
             border-top-color: #58a6ff;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 12px;
+            animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 13px; color: #8b949e; }
+
+        /* MapLibre overrides */
+        .maplibregl-ctrl-bottom-right { bottom: 48px !important; }
+        .maplibregl-ctrl-attrib { font-size: 9px !important; }
     </style>
 </head>
 <body>
-    <div id="map"></div>
 
-    <div class="header">
-        <h1><span>Exaggerated</span> Relief</h1>
-        <div class="subtitle">High-resolution hillshade maps of Illinois — ISGS ILHMP LiDAR</div>
-    </div>
-
-    <div class="controls">
-        <div class="control-group">
-            <label>Style</label>
-            <select id="style-select">
-                <option value="dark" selected>Dark</option>
-                <option value="light">Light</option>
-                <option value="tactical">Tactical</option>
-                <option value="terrain">Terrain</option>
-                <option value="gray">Grayscale</option>
-            </select>
-        </div>
-        <div class="control-group">
-            <label>Exaggeration</label>
-            <select id="exag-select">
-                <option value="3">3×</option>
-                <option value="9" selected>9×</option>
-                <option value="15">15×</option>
-            </select>
-        </div>
-        <div class="control-group">
-            <label>Opacity</label>
-            <input type="range" id="opacity-slider" min="0" max="100" value="100" />
-        </div>
-    </div>
-
-    <div class="county-list" id="county-list">
-        <h3>Counties</h3>
-        <div id="county-items">Loading...</div>
-    </div>
-
-    <div class="info-banner">
-        <strong>exaggeratedrelief.com</strong><br/>
-        Illinois hillshade tiles generated from
-        <a href="https://clearinghouse.isgs.illinois.edu/data/elevation/illinois-height-modernization-ilhmp" target="_blank">ISGS ILHMP</a>
-        LiDAR data. 102 counties, 1m resolution.<br/><br/>
-        Source: <a href="https://github.com/emuehlstein/illinois-hillshade-gen" target="_blank">ilhmp on GitHub</a>
-    </div>
-
-    <div class="loading" id="loading">
+    <!-- Loading overlay -->
+    <div id="loading-overlay">
         <div class="spinner"></div>
-        <div>Loading catalog...</div>
+        <div class="loading-text">Loading catalog…</div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1><span class="accent">Exaggerated</span> Relief</h1>
+            <span class="subtitle">Illinois hillshade maps — ISGS ILHMP LiDAR</span>
+        </div>
+        <div class="header-actions">
+            <a href="https://github.com/emuehlstein/illinois-hillshade-gen" target="_blank">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                GitHub
+            </a>
+            <a href="https://github.com/emuehlstein/illinois-hillshade-gen/blob/main/README.md" target="_blank">?</a>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <div class="main">
+
+        <!-- Illinois map (county selector) -->
+        <div class="map-panel">
+            <div id="selector-map"></div>
+            <div class="map-hint">Click a county to select it</div>
+            <div class="map-legend">
+                <div class="legend-item"><div class="legend-dot available"></div> Tiles available</div>
+                <div class="legend-item"><div class="legend-dot missing"></div> Not yet generated</div>
+            </div>
+        </div>
+
+        <!-- Configuration panel -->
+        <div class="config-panel">
+
+            <!-- County -->
+            <div class="config-section">
+                <div class="config-label">County</div>
+                <select id="county-select">
+                    <option value="">— select a county —</option>
+                </select>
+            </div>
+
+            <!-- DEM type -->
+            <div class="config-section">
+                <div class="config-label">DEM Source</div>
+                <div class="radio-group" id="dem-group">
+                    <label class="active" data-val="dtm">
+                        <input type="radio" name="dem" value="dtm" checked />
+                        <span>DTM</span>
+                    </label>
+                    <label data-val="dsm">
+                        <input type="radio" name="dem" value="dsm" />
+                        <span>DSM</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Theme -->
+            <div class="config-section">
+                <div class="config-label">Theme</div>
+                <select id="theme-select">
+                    <option value="simmon">Simmon</option>
+                    <option value="simmon-light">Simmon Light</option>
+                    <option value="atak-dark" selected>ATAK Dark</option>
+                    <option value="atak-light">ATAK Light</option>
+                    <option value="tactical">Tactical</option>
+                    <option value="flat-terrain">Flat Terrain</option>
+                    <option value="grayscale">Grayscale</option>
+                </select>
+            </div>
+
+            <!-- Exaggeration -->
+            <div class="config-section">
+                <div class="config-label">Vertical Exaggeration</div>
+                <div class="radio-group" id="exag-group">
+                    <label data-val="auto">
+                        <input type="radio" name="exag" value="auto" />
+                        <span>Auto</span>
+                    </label>
+                    <label data-val="3">
+                        <input type="radio" name="exag" value="3" />
+                        <span>3×</span>
+                    </label>
+                    <label class="active" data-val="9">
+                        <input type="radio" name="exag" value="9" checked />
+                        <span>9×</span>
+                    </label>
+                    <label data-val="15">
+                        <input type="radio" name="exag" value="15" />
+                        <span>15×</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Zoom range -->
+            <div class="config-section">
+                <div class="config-label">Zoom Range</div>
+                <div class="zoom-row">
+                    <input type="number" id="zoom-min" value="10" min="0" max="22" />
+                    <span class="zoom-sep">—</span>
+                    <input type="number" id="zoom-max" value="16" min="0" max="22" />
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Status card -->
+            <div class="config-section status-card" id="status-card">
+                <div class="config-label">Status</div>
+                <div id="status-content">
+                    <div style="color: #6e7681; font-size: 12px;">Select a county to see availability.</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Preview map (collapsed by default) -->
+    <div class="preview-section collapsed" id="preview-section">
+        <div class="preview-header">
+            <span class="preview-title" id="preview-title">Preview</span>
+            <button class="preview-close" id="preview-close" title="Close preview">✕</button>
+        </div>
+        <div id="preview-map"></div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="stats-bar" id="stats-bar">
+        <div class="stat"><strong id="stat-counties">—</strong> counties</div>
+        <span class="stats-separator">|</span>
+        <div class="stat"><strong id="stat-tiles">—</strong> tile sets available</div>
+        <span class="stats-separator">|</span>
+        <div class="stat"><strong id="stat-size">—</strong> total</div>
+        <span class="stats-separator">|</span>
+        <div class="stat" style="margin-left: auto; color: #6e7681;">PMTiles via S3 · MapLibre GL JS 5.6.0</div>
     </div>
 
     <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
     <script src="https://unpkg.com/pmtiles@4.4.0/dist/pmtiles.js"></script>
-    <script>
-        // Register PMTiles protocol
-        const protocol = new pmtiles.PMTilesProtocol();
-        maplibregl.addProtocol('pmtiles', protocol.tile);
-
-        // State
-        let catalog = null;
-        let currentStyle = 'dark';
-        let currentExag = 9;
-        let activeLayers = [];
-
-        // PMTiles served directly from S3 (supports Range requests)
-        const TILES_BASE = 'https://exaggeratedrelief.s3.us-east-2.amazonaws.com';
-
-        // Illinois center
-        const IL_CENTER = [-89.3985, 40.6331];
-        const IL_ZOOM = 6.5;
-
-        // Init map
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: {
-                version: 8,
-                sources: {},
-                layers: [{
-                    id: 'background',
-                    type: 'background',
-                    paint: { 'background-color': '#0d1117' }
-                }]
-            },
-            center: IL_CENTER,
-            zoom: IL_ZOOM,
-            maxZoom: 18,
-        });
-
-        map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
-
-        // Load catalog
-        async function loadCatalog() {
-            try {
-                const resp = await fetch('catalog.json');
-                catalog = await resp.json();
-                document.getElementById('loading').style.display = 'none';
-                renderCountyList();
-                addTileLayers();
-            } catch (e) {
-                document.getElementById('loading').innerHTML =
-                    '<div style="color: #f85149;">No tiles yet.</div>' +
-                    '<div style="margin-top: 8px; font-size: 12px; color: #8b949e;">Run the ilhmp pipeline to generate tiles.</div>';
-            }
-        }
-
-        function renderCountyList() {
-            const container = document.getElementById('county-items');
-            if (!catalog || !catalog.layers) {
-                container.innerHTML = '<div style="color: #8b949e;">No layers available.</div>';
-                return;
-            }
-
-            // Group by county
-            const counties = {};
-            catalog.layers.forEach(l => {
-                if (!counties[l.county]) counties[l.county] = [];
-                counties[l.county].push(l);
-            });
-
-            container.innerHTML = Object.keys(counties).sort().map(county => {
-                const layers = counties[county];
-                const hasCurrentStyle = layers.some(l =>
-                    l.style === currentStyle && l.exaggeration === currentExag
-                );
-                return `<div class="county-item" data-county="${county}" onclick="flyToCounty('${county}')">
-                    <div class="dot ${hasCurrentStyle ? 'available' : 'pending'}"></div>
-                    ${layers[0].name || county}
-                </div>`;
-            }).join('');
-        }
-
-        function addTileLayers() {
-            if (!catalog || !catalog.layers) return;
-
-            // Remove existing layers
-            activeLayers.forEach(id => {
-                if (map.getLayer(id)) map.removeLayer(id);
-                if (map.getSource(id)) map.removeSource(id);
-            });
-            activeLayers = [];
-
-            // Add matching layers
-            const matching = catalog.layers.filter(l =>
-                l.style === currentStyle && l.exaggeration === currentExag
-            );
-
-            matching.forEach(layer => {
-                const id = `hillshade-${layer.county}-${layer.style}-${layer.exaggeration}x`;
-                const pmtilesUrl = `pmtiles://${TILES_BASE}/${layer.pmtiles}`;
-
-                map.addSource(id, {
-                    type: 'raster',
-                    url: pmtilesUrl,
-                    tileSize: 256,
-                });
-
-                map.addLayer({
-                    id: id,
-                    type: 'raster',
-                    source: id,
-                    paint: {
-                        'raster-opacity': document.getElementById('opacity-slider').value / 100,
-                    },
-                });
-
-                activeLayers.push(id);
-            });
-
-            renderCountyList();
-        }
-
-        function flyToCounty(countyName) {
-            if (!catalog) return;
-            const layer = catalog.layers.find(l => l.county === countyName);
-            if (layer && layer.bounds) {
-                map.fitBounds([
-                    [layer.bounds[0], layer.bounds[1]],
-                    [layer.bounds[2], layer.bounds[3]]
-                ], { padding: 40, duration: 1500 });
-            }
-        }
-
-        // Controls
-        document.getElementById('style-select').addEventListener('change', e => {
-            currentStyle = e.target.value;
-            addTileLayers();
-        });
-
-        document.getElementById('exag-select').addEventListener('change', e => {
-            currentExag = parseInt(e.target.value);
-            addTileLayers();
-        });
-
-        document.getElementById('opacity-slider').addEventListener('input', e => {
-            const opacity = e.target.value / 100;
-            activeLayers.forEach(id => {
-                if (map.getLayer(id)) {
-                    map.setPaintProperty(id, 'raster-opacity', opacity);
-                }
-            });
-        });
-
-        // Boot
-        map.on('load', loadCatalog);
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>

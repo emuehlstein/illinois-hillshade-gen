@@ -1,0 +1,1687 @@
+{
+  "generated": "2026-05-08T20:30:00Z",
+  "source": "ISGS ILHMP LiDAR + USGS 3DEP",
+  "project": "https://github.com/emuehlstein/illinois-hillshade-gen",
+  "themes": [
+    "simmon",
+    "simmon-light",
+    "atak-dark",
+    "atak-light",
+    "tactical",
+    "flat-terrain",
+    "grayscale"
+  ],
+  "counties": {
+    "adams": {
+      "name": "Adams",
+      "fips": "17001",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2018",
+          "size_gb": 48.4
+        },
+        "dsm": {
+          "year": "2018",
+          "size_gb": 51.8
+        }
+      },
+      "tiles": []
+    },
+    "alexander": {
+      "name": "Alexander",
+      "fips": "17003",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 14.8
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 16.2
+        }
+      },
+      "tiles": []
+    },
+    "bond": {
+      "name": "Bond",
+      "fips": "17005",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 20.4
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 21.5
+        }
+      },
+      "tiles": []
+    },
+    "boone": {
+      "name": "Boone",
+      "fips": "17007",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2018",
+          "size_gb": 14.7
+        },
+        "dsm": {
+          "year": "2018",
+          "size_gb": 15.2
+        }
+      },
+      "tiles": []
+    },
+    "brown": {
+      "name": "Brown",
+      "fips": "17009",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 9.8
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 10.3
+        }
+      },
+      "tiles": []
+    },
+    "bureau": {
+      "name": "Bureau",
+      "fips": "17011",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2023",
+          "size_gb": 140.0
+        },
+        "dsm": {
+          "year": "2023",
+          "size_gb": 101.0
+        }
+      },
+      "tiles": []
+    },
+    "calhoun": {
+      "name": "Calhoun",
+      "fips": "17013",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 15.7
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 17.8
+        }
+      },
+      "tiles": []
+    },
+    "carroll": {
+      "name": "Carroll",
+      "fips": "17015",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 23.6
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 15.9
+        }
+      },
+      "tiles": []
+    },
+    "cass": {
+      "name": "Cass",
+      "fips": "17017",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 12.2
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 12.1
+        }
+      },
+      "tiles": []
+    },
+    "champaign": {
+      "name": "Champaign",
+      "fips": "17019",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 28.4
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 47.8
+        }
+      },
+      "tiles": []
+    },
+    "christian": {
+      "name": "Christian",
+      "fips": "17021",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2024",
+          "size_gb": 73.5
+        },
+        "dsm": {
+          "year": "2024",
+          "size_gb": 80.0
+        }
+      },
+      "tiles": []
+    },
+    "clark": {
+      "name": "Clark",
+      "fips": "17023",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 27.2
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 28.7
+        }
+      },
+      "tiles": []
+    },
+    "clay": {
+      "name": "Clay",
+      "fips": "17025",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 25.3
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 25.9
+        }
+      },
+      "tiles": []
+    },
+    "clinton": {
+      "name": "Clinton",
+      "fips": "17027",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 25.7
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 26.7
+        }
+      },
+      "tiles": []
+    },
+    "coles": {
+      "name": "Coles",
+      "fips": "17029",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 26.0
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 26.8
+        }
+      },
+      "tiles": []
+    },
+    "cook": {
+      "name": "Cook",
+      "fips": "17031",
+      "bounds": [
+        -88.3,
+        41.4,
+        -87.5,
+        42.2
+      ],
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 131.0
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 147.0
+        }
+      },
+      "tiles": [
+        {
+          "id": "cook-dark-9x-z9-17",
+          "theme": "atak-dark",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            17
+          ],
+          "pmtiles": "tiles/cook-dark-9x.pmtiles",
+          "pmtiles_size_mb": 1200,
+          "tile_count": 122186,
+          "generated_at": "2026-04-22T00:00:00Z"
+        },
+        {
+          "id": "cook-light-9x-z9-17",
+          "theme": "atak-light",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            17
+          ],
+          "pmtiles": "tiles/cook-light-9x.pmtiles",
+          "pmtiles_size_mb": 1300,
+          "tile_count": 122186,
+          "generated_at": "2026-04-22T00:00:00Z"
+        }
+      ]
+    },
+    "crawford": {
+      "name": "Crawford",
+      "fips": "17033",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 26.6
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 28.4
+        }
+      },
+      "tiles": []
+    },
+    "cumberland": {
+      "name": "Cumberland",
+      "fips": "17035",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 18.1
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 19.0
+        }
+      },
+      "tiles": []
+    },
+    "dekalb": {
+      "name": "DeKalb",
+      "fips": "17037",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2018",
+          "size_gb": 16.8
+        },
+        "dsm": {
+          "year": "2018",
+          "size_gb": 17.6
+        }
+      },
+      "tiles": []
+    },
+    "dewitt": {
+      "name": "DeWitt",
+      "fips": "17039",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 22.1
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 22.8
+        }
+      },
+      "tiles": []
+    },
+    "douglas": {
+      "name": "Douglas",
+      "fips": "17041",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 20.7
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 21.0
+        }
+      },
+      "tiles": []
+    },
+    "dupage": {
+      "name": "DuPage",
+      "fips": "17043",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 18.9
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 20.3
+        }
+      },
+      "tiles": []
+    },
+    "edgar": {
+      "name": "Edgar",
+      "fips": "17045",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 34.7
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 33.3
+        }
+      },
+      "tiles": []
+    },
+    "edwards": {
+      "name": "Edwards",
+      "fips": "17047",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 14.5
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 14.9
+        }
+      },
+      "tiles": []
+    },
+    "effingham": {
+      "name": "Effingham",
+      "fips": "17049",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 26.7
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 27.0
+        }
+      },
+      "tiles": []
+    },
+    "fayette": {
+      "name": "Fayette",
+      "fips": "17051",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 47.8
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 42.0
+        }
+      },
+      "tiles": []
+    },
+    "ford": {
+      "name": "Ford",
+      "fips": "17053",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2023",
+          "size_gb": 56.5
+        },
+        "dsm": {
+          "year": "2023",
+          "size_gb": 57.2
+        }
+      },
+      "tiles": []
+    },
+    "franklin": {
+      "name": "Franklin",
+      "fips": "17055",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 24.0
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 26.1
+        }
+      },
+      "tiles": []
+    },
+    "fulton": {
+      "name": "Fulton",
+      "fips": "17057",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 48.2
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 51.2
+        }
+      },
+      "tiles": []
+    },
+    "gallatin": {
+      "name": "Gallatin",
+      "fips": "17059",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 19.7
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 19.4
+        }
+      },
+      "tiles": []
+    },
+    "greene": {
+      "name": "Greene",
+      "fips": "17061",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 18.5
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 19.0
+        }
+      },
+      "tiles": []
+    },
+    "grundy": {
+      "name": "Grundy",
+      "fips": "17063",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2018",
+          "size_gb": 11.7
+        },
+        "dsm": {
+          "year": "2018",
+          "size_gb": 12.5
+        }
+      },
+      "tiles": []
+    },
+    "hamilton": {
+      "name": "Hamilton",
+      "fips": "17065",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 32.9
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 32.6
+        }
+      },
+      "tiles": []
+    },
+    "hancock": {
+      "name": "Hancock",
+      "fips": "17067",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 24.4
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 25.4
+        }
+      },
+      "tiles": []
+    },
+    "hardin": {
+      "name": "Hardin",
+      "fips": "17069",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 11.4
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 12.1
+        }
+      },
+      "tiles": []
+    },
+    "henderson": {
+      "name": "Henderson",
+      "fips": "17071",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 20.0
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 21.6
+        }
+      },
+      "tiles": []
+    },
+    "henry": {
+      "name": "Henry",
+      "fips": "17073",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 25.4
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 26.1
+        }
+      },
+      "tiles": []
+    },
+    "iroquois": {
+      "name": "Iroquois",
+      "fips": "17075",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2024",
+          "size_gb": 116.0
+        },
+        "dsm": {
+          "year": "2024",
+          "size_gb": 119.0
+        }
+      },
+      "tiles": []
+    },
+    "jackson": {
+      "name": "Jackson",
+      "fips": "17077",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 34.4
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 36.1
+        }
+      },
+      "tiles": []
+    },
+    "jasper": {
+      "name": "Jasper",
+      "fips": "17079",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 29.3
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 30.4
+        }
+      },
+      "tiles": []
+    },
+    "jefferson": {
+      "name": "Jefferson",
+      "fips": "17081",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 32.7
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 35.1
+        }
+      },
+      "tiles": []
+    },
+    "jersey": {
+      "name": "Jersey",
+      "fips": "17083",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 22.2
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 22.8
+        }
+      },
+      "tiles": []
+    },
+    "jodaviess": {
+      "name": "Jo Daviess",
+      "fips": "17085",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 21.5
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 21.7
+        }
+      },
+      "tiles": []
+    },
+    "johnson": {
+      "name": "Johnson",
+      "fips": "17087",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 21.7
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 22.9
+        }
+      },
+      "tiles": []
+    },
+    "kane": {
+      "name": "Kane",
+      "fips": "17089",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 24.6
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 26.8
+        }
+      },
+      "tiles": []
+    },
+    "kankakee": {
+      "name": "Kankakee",
+      "fips": "17091",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2023",
+          "size_gb": 90.9
+        },
+        "dsm": {
+          "year": "2023",
+          "size_gb": 78.3
+        }
+      },
+      "tiles": []
+    },
+    "kendall": {
+      "name": "Kendall",
+      "fips": "17093",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2018",
+          "size_gb": 8.8
+        },
+        "dsm": {
+          "year": "2018",
+          "size_gb": 9.3
+        }
+      },
+      "tiles": []
+    },
+    "knox": {
+      "name": "Knox",
+      "fips": "17095",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 38.1
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 39.1
+        }
+      },
+      "tiles": []
+    },
+    "lake": {
+      "name": "Lake",
+      "fips": "17097",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 22.8
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 26.7
+        }
+      },
+      "tiles": []
+    },
+    "lasalle": {
+      "name": "LaSalle",
+      "fips": "17099",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 57.4
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 60.1
+        }
+      },
+      "tiles": []
+    },
+    "lawrence": {
+      "name": "Lawrence",
+      "fips": "17101",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 23.6
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 25.1
+        }
+      },
+      "tiles": []
+    },
+    "lee": {
+      "name": "Lee",
+      "fips": "17103",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 22.2
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 23.0
+        }
+      },
+      "tiles": []
+    },
+    "livingston": {
+      "name": "Livingston",
+      "fips": "17105",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2024",
+          "size_gb": 114.0
+        },
+        "dsm": {
+          "year": "2024",
+          "size_gb": 117.0
+        }
+      },
+      "tiles": []
+    },
+    "logan": {
+      "name": "Logan",
+      "fips": "17107",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2023",
+          "size_gb": 73.1
+        },
+        "dsm": {
+          "year": "2023",
+          "size_gb": 74.0
+        }
+      },
+      "tiles": []
+    },
+    "macon": {
+      "name": "Macon",
+      "fips": "17115",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 31.7
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 32.2
+        }
+      },
+      "tiles": []
+    },
+    "macoupin": {
+      "name": "Macoupin",
+      "fips": "17117",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 27.9
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 28.9
+        }
+      },
+      "tiles": []
+    },
+    "madison": {
+      "name": "Madison",
+      "fips": "17119",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2023",
+          "size_gb": 80.8
+        },
+        "dsm": {
+          "year": "2023",
+          "size_gb": 85.8
+        }
+      },
+      "tiles": []
+    },
+    "marion": {
+      "name": "Marion",
+      "fips": "17121",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 32.5
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 33.8
+        }
+      },
+      "tiles": []
+    },
+    "marshall": {
+      "name": "Marshall",
+      "fips": "17123",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 20.8
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 22.3
+        }
+      },
+      "tiles": []
+    },
+    "mason": {
+      "name": "Mason",
+      "fips": "17125",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 16.4
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 17.7
+        }
+      },
+      "tiles": []
+    },
+    "massac": {
+      "name": "Massac",
+      "fips": "17127",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 14.5
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 15.3
+        }
+      },
+      "tiles": []
+    },
+    "mcdonough": {
+      "name": "McDonough",
+      "fips": "17109",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 31.9
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 32.3
+        }
+      },
+      "tiles": []
+    },
+    "mchenry": {
+      "name": "McHenry",
+      "fips": "17111",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 68.6
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 73.4
+        }
+      },
+      "tiles": []
+    },
+    "mclean": {
+      "name": "McLean",
+      "fips": "17113",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 58.8
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 59.6
+        }
+      },
+      "tiles": []
+    },
+    "menard": {
+      "name": "Menard",
+      "fips": "17129",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2018",
+          "size_gb": 9.9
+        },
+        "dsm": {
+          "year": "2018",
+          "size_gb": 10.3
+        }
+      },
+      "tiles": []
+    },
+    "mercer": {
+      "name": "Mercer",
+      "fips": "17131",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 31.5
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 32.5
+        }
+      },
+      "tiles": []
+    },
+    "monroe": {
+      "name": "Monroe",
+      "fips": "17133",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 23.9
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 25.1
+        }
+      },
+      "tiles": []
+    },
+    "montgomery": {
+      "name": "Montgomery",
+      "fips": "17135",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 23.5
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 24.1
+        }
+      },
+      "tiles": []
+    },
+    "morgan": {
+      "name": "Morgan",
+      "fips": "17137",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 17.1
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 17.7
+        }
+      },
+      "tiles": []
+    },
+    "moultrie": {
+      "name": "Moultrie",
+      "fips": "17139",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 18.9
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 19.1
+        }
+      },
+      "tiles": []
+    },
+    "ogle": {
+      "name": "Ogle",
+      "fips": "17141",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 24.2
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 25.2
+        }
+      },
+      "tiles": []
+    },
+    "peoria": {
+      "name": "Peoria",
+      "fips": "17143",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 41.6
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 36.3
+        }
+      },
+      "tiles": []
+    },
+    "perry": {
+      "name": "Perry",
+      "fips": "17145",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 25.8
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 27.7
+        }
+      },
+      "tiles": []
+    },
+    "piatt": {
+      "name": "Piatt",
+      "fips": "17147",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 21.6
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 22.1
+        }
+      },
+      "tiles": []
+    },
+    "pike": {
+      "name": "Pike",
+      "fips": "17149",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2023",
+          "size_gb": 97.7
+        },
+        "dsm": {
+          "year": "2023",
+          "size_gb": 101.0
+        }
+      },
+      "tiles": []
+    },
+    "pope": {
+      "name": "Pope",
+      "fips": "17151",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 23.3
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 38.8
+        }
+      },
+      "tiles": []
+    },
+    "pulaski": {
+      "name": "Pulaski",
+      "fips": "17153",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 12.3
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 13.4
+        }
+      },
+      "tiles": []
+    },
+    "putnam": {
+      "name": "Putnam",
+      "fips": "17155",
+      "bounds": [
+        -89.48,
+        41.1,
+        -89.15,
+        41.32
+      ],
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 16.4
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 10.6
+        }
+      },
+      "tiles": []
+    },
+    "randolph": {
+      "name": "Randolph",
+      "fips": "17157",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 35.3
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 37.2
+        }
+      },
+      "tiles": []
+    },
+    "richland": {
+      "name": "Richland",
+      "fips": "17159",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 21.2
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 21.5
+        }
+      },
+      "tiles": []
+    },
+    "rockisland": {
+      "name": "Rock Island",
+      "fips": "17161",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 14.6
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 16.3
+        }
+      },
+      "tiles": []
+    },
+    "saline": {
+      "name": "Saline",
+      "fips": "17165",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 23.8
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 25.0
+        }
+      },
+      "tiles": []
+    },
+    "sangamon": {
+      "name": "Sangamon",
+      "fips": "17167",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2018",
+          "size_gb": 25.5
+        },
+        "dsm": {
+          "year": "2018",
+          "size_gb": 26.8
+        }
+      },
+      "tiles": []
+    },
+    "schuyler": {
+      "name": "Schuyler",
+      "fips": "17169",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2017",
+          "size_gb": 14.3
+        },
+        "dsm": {
+          "year": "2017",
+          "size_gb": 15.0
+        }
+      },
+      "tiles": []
+    },
+    "scott": {
+      "name": "Scott",
+      "fips": "17171",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2023",
+          "size_gb": 31.6
+        },
+        "dsm": {
+          "year": "2023",
+          "size_gb": 32.5
+        }
+      },
+      "tiles": []
+    },
+    "shelby": {
+      "name": "Shelby",
+      "fips": "17173",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 42.4
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 43.3
+        }
+      },
+      "tiles": []
+    },
+    "stark": {
+      "name": "Stark",
+      "fips": "17175",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 15.4
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 15.6
+        }
+      },
+      "tiles": []
+    },
+    "stclair": {
+      "name": "St. Clair",
+      "fips": "17163",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 38.7
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 41.0
+        }
+      },
+      "tiles": []
+    },
+    "stephenson": {
+      "name": "Stephenson",
+      "fips": "17177",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 18.6
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 20.4
+        }
+      },
+      "tiles": []
+    },
+    "tazewell": {
+      "name": "Tazewell",
+      "fips": "17179",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 35.7
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 38.1
+        }
+      },
+      "tiles": []
+    },
+    "union": {
+      "name": "Union",
+      "fips": "17181",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 26.5
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 27.9
+        }
+      },
+      "tiles": []
+    },
+    "vermilion": {
+      "name": "Vermilion",
+      "fips": "17183",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 48.1
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 49.2
+        }
+      },
+      "tiles": []
+    },
+    "wabash": {
+      "name": "Wabash",
+      "fips": "17185",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 14.7
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 15.4
+        }
+      },
+      "tiles": []
+    },
+    "warren": {
+      "name": "Warren",
+      "fips": "17187",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 28.4
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 28.9
+        }
+      },
+      "tiles": []
+    },
+    "washington": {
+      "name": "Washington",
+      "fips": "17189",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 32.5
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 33.7
+        }
+      },
+      "tiles": []
+    },
+    "wayne": {
+      "name": "Wayne",
+      "fips": "17191",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 41.8
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 43.4
+        }
+      },
+      "tiles": []
+    },
+    "white": {
+      "name": "White",
+      "fips": "17193",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 29.9
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 30.9
+        }
+      },
+      "tiles": []
+    },
+    "whiteside": {
+      "name": "Whiteside",
+      "fips": "17195",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 22.0
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 23.0
+        }
+      },
+      "tiles": []
+    },
+    "will": {
+      "name": "Will",
+      "fips": "17197",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2021",
+          "size_gb": 83.5
+        },
+        "dsm": {
+          "year": "2021",
+          "size_gb": 110.5
+        }
+      },
+      "tiles": []
+    },
+    "williamson": {
+      "name": "Williamson",
+      "fips": "17199",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2020",
+          "size_gb": 26.6
+        },
+        "dsm": {
+          "year": "2020",
+          "size_gb": 29.0
+        }
+      },
+      "tiles": []
+    },
+    "winnebago": {
+      "name": "Winnebago",
+      "fips": "17201",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2018",
+          "size_gb": 29.6
+        },
+        "dsm": {
+          "year": "2018",
+          "size_gb": 31.0
+        }
+      },
+      "tiles": []
+    },
+    "woodford": {
+      "name": "Woodford",
+      "fips": "17203",
+      "bounds": null,
+      "sources": {
+        "dtm": {
+          "year": "2022",
+          "size_gb": 29.7
+        },
+        "dsm": {
+          "year": "2022",
+          "size_gb": 30.9
+        }
+      },
+      "tiles": []
+    }
+  }
+}
