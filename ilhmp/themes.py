@@ -50,6 +50,9 @@ class Theme:
     exaggeration: str = "auto"      # 'auto' or a fixed number as string
     terrain_type: str = "auto"      # Terrain hint for auto-exagg tuning
     
+    # Aspect blending (Simmon technique)
+    aspect_blend: float = 0.0       # 0.0 = no aspect, 0.1 = subtle depth cues
+    
     # Zoom defaults
     default_zoom: str = "10-16"
     
@@ -142,11 +145,13 @@ _register(Theme(
 # Simmon Composite — the full Simmon treatment
 _register(Theme(
     name="simmon",
-    description="Advanced composite blend (60% multidirectional + 30% igor + 10% combined). "
+    description="Advanced composite blend (60% multidirectional + 30% igor + 10% combined) "
+                "with 10% aspect overlay for depth cues. "
                 "Best overall terrain rendering, inspired by Robert Simmon's techniques.",
     ramp="dark",
     shading="composite",
     composite_weights=(0.6, 0.3, 0.1),
+    aspect_blend=0.1,
     exaggeration="auto",
     terrain_type="auto",
     tags=["advanced", "composite", "dark"],
@@ -155,10 +160,11 @@ _register(Theme(
 # Simmon Light
 _register(Theme(
     name="simmon-light",
-    description="Advanced composite blend on light background.",
+    description="Advanced composite blend on light background with aspect depth cues.",
     ramp="light",
     shading="composite",
     composite_weights=(0.6, 0.3, 0.1),
+    aspect_blend=0.1,
     exaggeration="auto",
     terrain_type="auto",
     tags=["advanced", "composite", "light"],
@@ -168,10 +174,11 @@ _register(Theme(
 _register(Theme(
     name="flat-terrain",
     description="Maximum terrain visibility for flat regions (Illinois, Indiana, Florida). "
-                "15x fixed exaggeration with composite shading.",
+                "15x fixed exaggeration with composite shading and aspect depth cues.",
     ramp="dark",
     shading="composite",
     composite_weights=(0.5, 0.3, 0.2),
+    aspect_blend=0.12,
     exaggeration="15",
     terrain_type="flat",
     tags=["flat", "midwest", "dark"],

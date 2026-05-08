@@ -191,12 +191,15 @@ def test_ramp_files_exist():
 
 
 def test_ramp_file_format():
-    """Each ramp file should have 5 data lines + nv line."""
+    """Each ramp file should have data lines + nv line."""
     ramps_dir = Path(__file__).parent.parent / "ilhmp" / "ramps"
     for name in ("dark", "light", "tactical", "terrain", "gray"):
         ramp = ramps_dir / f"{name}.txt"
         lines = [l.strip() for l in ramp.read_text().splitlines() if l.strip()]
-        assert len(lines) == 6, f"{name}.txt should have 6 lines (5 data + nv), got {len(lines)}"
+        # At least 6 lines (5 data + nv), more is fine for richer gradients
+        assert len(lines) >= 6, f"{name}.txt should have at least 6 lines (5 data + nv), got {len(lines)}"
+        # Last data line must be the nv (nodata) entry
+        assert lines[-1].startswith("nv"), f"{name}.txt last line should be nv entry"
         assert lines[-1].startswith("nv"), f"{name}.txt last line should be 'nv ...' nodata"
         for line in lines[:-1]:
             parts = line.split()

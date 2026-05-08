@@ -77,6 +77,7 @@ def generate(
     composite_weights: Optional[Tuple[float, float, float]] = None,
     ramp_file: Optional[Path] = None,
     legacy: bool = False,
+    aspect_blend: float = 0.0,
 ) -> Path:
     """
     Generate a styled hillshade from a DEM.
@@ -155,6 +156,7 @@ def generate(
             gray_path = _generate_composite(
                 input_dem, tmp_dir, exaggeration, azimuth, altitude,
                 composite_weights, cache_dir, force_recompute,
+                aspect_blend=aspect_blend,
             )
         else:
             gray_path = tmp_dir / "hillshade_gray.tif"
@@ -222,9 +224,16 @@ def _generate_composite(
     weights: Optional[Tuple[float, float, float]],
     cache_dir: Optional[Path],
     force_recompute: bool,
+    aspect_blend: float = 0.1,
 ) -> Path:
     """
-    Generate composite hillshade by blending multidirectional, igor, and combined.
+    Generate composite hillshade by blending multidirectional, igor, and combined,
+    with an optional aspect overlay for depth cues (Simmon technique).
+
+    The aspect layer encodes slope direction (0-360°) which is rescaled to a
+    0-255 grayscale and subtly blended into the composite.  This adds depth
+    perception — northeast-facing slopes darken, southwest-facing slopes brighten
+    — mimicking the Simmon multi-layer approach.
 
     Returns path to blended grayscale TIF.
     """
@@ -257,24 +266,80 @@ def _generate_composite(
                 layer_path = cached
         layer_paths.append(layer_path)
 
-    # Blend with gdal_calc.py: weighted sum, clamp to [0, 255]
+    # Generate aspect layer for depth cues
+    aspect_path = None
+    if aspect_blend > 0:
+        if cache_dir is not None:
+            aspect_cached = cache_dir / f"{input_dem.stem}_aspect.tif"
+        else:
+            aspect_cached = None
+
+        aspect_raw = tmp_dir / "aspect_raw.tif"
+        if aspect_cached and aspect_cached.exists() and not force_recompute:
+            aspect_raw = aspect_cached
+        else:
+            # gdaldem aspect produces 0-360 float values
+            cmd = [
+                "gdaldem", "aspect",
+                str(input_dem), str(aspect_raw),
+                "-compute_edges",
+                "-co", "COMPRESS=LZW",
+                "-co", "TILED=YES",
+                "-co", "BIGTIFF=YES",
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(f"gdaldem aspect failed: {result.stderr}")
+            if aspect_cached is not None:
+                shutil.copy2(aspect_raw, aspect_cached)
+                aspect_raw = aspect_cached
+        aspect_path = aspect_raw
+
+    # Blend hillshade layers + optional aspect
     composite_path = tmp_dir / "gray_composite.tif"
-    calc_expr = (
-        f"numpy.clip({w_multi}*A + {w_igor}*B + {w_combined}*C, 0, 255).astype(numpy.uint8)"
-    )
-    cmd = [
-        "gdal_calc.py",
-        "-A", str(layer_paths[0]),
-        "-B", str(layer_paths[1]),
-        "-C", str(layer_paths[2]),
-        f"--calc={calc_expr}",
-        f"--outfile={composite_path}",
-        "--type=Byte",
-        "--co=COMPRESS=LZW",
-        "--co=TILED=YES",
-        "--co=BIGTIFF=YES",
-        "--quiet",
-    ]
+    if aspect_path and aspect_blend > 0:
+        # Scale aspect from 0-360° to 0-255 grayscale, then blend.
+        # NE-facing slopes (45°) → dark, SW-facing (225°) → bright,
+        # using cosine mapping: 127.5 + 127.5 * cos(aspect_rad - sun_az_rad)
+        hs_weight = 1.0 - aspect_blend
+        calc_expr = (
+            f"numpy.clip("
+            f"{hs_weight} * ({w_multi}*A + {w_igor}*B + {w_combined}*C) + "
+            f"{aspect_blend} * numpy.where(D == -1, 128, "
+            f"127.5 + 127.5 * numpy.cos(numpy.radians(D) - {azimuth * 3.14159265 / 180.0}))"
+            f", 0, 255).astype(numpy.uint8)"
+        )
+        cmd = [
+            "gdal_calc.py",
+            "-A", str(layer_paths[0]),
+            "-B", str(layer_paths[1]),
+            "-C", str(layer_paths[2]),
+            "-D", str(aspect_path),
+            f"--calc={calc_expr}",
+            f"--outfile={composite_path}",
+            "--type=Byte",
+            "--co=COMPRESS=LZW",
+            "--co=TILED=YES",
+            "--co=BIGTIFF=YES",
+            "--quiet",
+        ]
+    else:
+        calc_expr = (
+            f"numpy.clip({w_multi}*A + {w_igor}*B + {w_combined}*C, 0, 255).astype(numpy.uint8)"
+        )
+        cmd = [
+            "gdal_calc.py",
+            "-A", str(layer_paths[0]),
+            "-B", str(layer_paths[1]),
+            "-C", str(layer_paths[2]),
+            f"--calc={calc_expr}",
+            f"--outfile={composite_path}",
+            "--type=Byte",
+            "--co=COMPRESS=LZW",
+            "--co=TILED=YES",
+            "--co=BIGTIFF=YES",
+            "--quiet",
+        ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"gdal_calc.py (composite) failed: {result.stderr}")

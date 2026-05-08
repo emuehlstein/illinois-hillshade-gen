@@ -59,9 +59,9 @@ def run(
     county: str = typer.Argument(..., help="County name (e.g., 'putnam', 'cook')"),
     dem: str = typer.Option("dtm", "--dem", "-d", help="DEM type: dtm or dsm"),
     theme: Optional[str] = typer.Option(None, "--theme", "-t", help="Named theme preset (overrides style/shading/exaggeration). Run 'ilhmp themes' to list."),
-    style: str = typer.Option("dark", "--style", "-s", help="Color style: dark, light, tactical, terrain, gray"),
-    exaggeration: str = typer.Option("3.0", "--exaggeration", "-z", help="Vertical exaggeration factor or 'auto'"),
-    zoom: str = typer.Option("10-16", "--zoom", help="Zoom range (e.g., '10-16')"),
+    style: Optional[str] = typer.Option(None, "--style", "-s", help="Color style: dark, light, tactical, terrain, gray"),
+    exaggeration: Optional[str] = typer.Option(None, "--exaggeration", "-z", help="Vertical exaggeration factor or 'auto'"),
+    zoom: Optional[str] = typer.Option(None, "--zoom", help="Zoom range (e.g., '10-16')"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
     cache_dir: Optional[Path] = typer.Option(None, "--cache-dir", help="Directory for intermediate files (raw DEM, reprojected TIF, hillshade). Defaults to output dir."),
     source_zip: Optional[Path] = typer.Option(None, "--source-zip", help="Use a local ZIP instead of downloading. Still extracts and converts."),
@@ -70,39 +70,47 @@ def run(
     view: bool = typer.Option(False, "--view", "-v", help="Launch viewer after completion"),
     json_out: bool = typer.Option(False, "--json", help="Output structured JSON instead of Rich text"),
     force_recompute: bool = typer.Option(False, "--force-recompute", help="Bypass the grayscale hillshade cache and recompute from scratch."),
-    shading: str = typer.Option("multidirectional", "--shading", help="Shading mode: standard, multidirectional, combined, igor, composite"),
-    color_mode: str = typer.Option("ramp", "--color-mode", help="Color mode: tint (legacy) or ramp (default)"),
+    shading: Optional[str] = typer.Option(None, "--shading", help="Shading mode: standard, multidirectional, combined, igor, composite"),
+    color_mode: Optional[str] = typer.Option(None, "--color-mode", help="Color mode: tint (legacy) or ramp (default)"),
     composite_weights: Optional[str] = typer.Option(None, "--composite-weights", help="Composite weights as 'multi,igor,combined' (e.g. '0.6,0.3,0.1')"),
     ramp: Optional[Path] = typer.Option(None, "--ramp", help="Custom GDAL color-relief ramp file"),
+    aspect_blend: Optional[float] = typer.Option(None, "--aspect-blend", help="Aspect overlay blend weight (0.0-1.0). Adds depth cues from slope direction."),
     legacy: bool = typer.Option(False, "--legacy", help="Restore v1 behavior (standard shading, tint color mode)"),
 ):
     """
     Full pipeline: download → reproject → hillshade → tile for a county.
     """
-    # Apply theme defaults if specified (CLI args still override)
+    # Apply theme if specified, then fill remaining defaults.
+    # Explicit CLI flags (non-None) always win over theme values.
     if theme:
         t = themes_mod.get_theme(theme)
         if not t:
             msg = f"Unknown theme: {theme}. Run 'ilhmp themes' to list."
             print(json.dumps({"error": msg})) if json_out else console.print(f"[red]{msg}[/red]")
             raise typer.Exit(1)
-        # Theme provides defaults; explicit CLI flags override
-        # Typer doesn't expose which options were explicitly set, so we check
-        # against the declared defaults to detect user overrides.
-        if style == "dark":  # default → use theme
+        if style is None:
             style = t.ramp
-        if exaggeration == "3.0":  # default → use theme
+        if exaggeration is None:
             exaggeration = t.exaggeration
-        if zoom == "10-16":  # default → use theme
+        if zoom is None:
             zoom = t.default_zoom
-        if shading == "multidirectional":  # default → use theme
+        if shading is None:
             shading = t.shading
-        if color_mode == "ramp":  # default → use theme
+        if color_mode is None:
             color_mode = t.color_mode
-        if not composite_weights and t.shading == "composite":
+        if composite_weights is None and t.shading == "composite":
             composite_weights = ",".join(str(w) for w in t.composite_weights)
+        if aspect_blend is None and t.aspect_blend > 0:
+            aspect_blend = t.aspect_blend
         if not json_out:
             console.print(f"[dim]Using theme: {t.name} — {t.description}[/dim]\n")
+
+    # Apply defaults for anything still unset
+    style = style or "dark"
+    exaggeration = exaggeration or "auto"
+    zoom = zoom or "10-16"
+    shading = shading or "multidirectional"
+    color_mode = color_mode or "ramp"
 
     county_info = counties.get_county(county)
     if not county_info:
@@ -227,6 +235,7 @@ def run(
                 composite_weights=parsed_weights,
                 ramp_file=ramp,
                 legacy=legacy,
+                aspect_blend=aspect_blend or 0.0,
             )
         if not json_out:
             console.print(f"[green]✓[/green] Hillshade: {hs_path}")
