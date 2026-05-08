@@ -1,1 +1,8 @@
-
+  - county: lake
+    dem: dtm
+    styles:
+      - simmon
+    exaggerations:
+      - 9
+    zoom: "10-16"
+    status: pending
