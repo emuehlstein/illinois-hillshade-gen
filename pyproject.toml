@@ -34,7 +34,7 @@ ilhmp = "ilhmp.cli:app"
 where = ["."]
 
 [tool.setuptools.package-data]
-ilhmp = ["templates/*.html"]
+ilhmp = ["templates/*.html", "ramps/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

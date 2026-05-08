@@ -1,0 +1,651 @@
+Countysort descending	Year	Metadata	Tile Index	LAS	DTM/DEM	DSM	
+Adams	2009	Metadata	Tile Index	LAS (30.9 GB)	Download (9.7 GB)
+Image Service	Download (9.8 GB)
+Image Service	
+Adams	2018	Metadata	Tile Index	LAS (411.0 GB)	Download (48.4 GB)
+Image Service	Download (51.8 GB)
+Image Service	
+Alexander	2009-2011	Metadata	Tile Index	LAS (11.1 GB)	Download (1.6 GB)
+Image Service	Download (1.6 GB)
+Image Service	
+Alexander	2020	Metadata	Tile Index	LAS (68.2 GB)	Download (14.8 GB)
+Image Service	Download (16.2 GB)
+Image Service	
+Bond	2015	Metadata	Tile Index	LAS (32.1 GB)	Download (5.8 GB)
+Image Service	Download (6.2 GB)
+Image Service	
+Bond	2021	Metadata	Tile Index	LAS (117.0 GB)	Download (20.4 GB)
+Image Service	Download (21.5 GB)
+Image Service	
+Boone	2007	Metadata	Tile Index	LAS (22.8 GB)	Download (2.0 GB)
+Image Service	Download (2.1 GB)
+Image Service	
+Boone	2018	Metadata	Tile Index	LAS (81.5 GB)	Download (14.7 GB)
+Image Service	Download (15.2 GB)
+Image Service	
+Brown	2017	Metadata	Tile Index	LAS (123.0 GB)	Download (9.8 GB)
+Image Service	Download (10.3 GB)
+Image Service	
+Bureau	2023	Metadata	Tile Index	LAS (741.0 GB)	Download (140.0 GB)
+Image Service	Download (101.0 GB)
+Image Service	
+Bureau	2015	Metadata	Tile Index	LAS (70.6 GB)	Download (25.3 GB)
+Image Service	Download (26.4 GB)
+Image Service	
+Calhoun	2011	Metadata	Tile Index	LAS (9.4 GB)	Download (1.8 GB)
+Image Service	Download (1.9 GB)
+Image Service	
+Calhoun	2021	Metadata	Tile Index	LAS (103.0 GB)	Download (15.7 GB)
+Image Service	Download (17.8 GB)
+Image Service	
+Carroll	2009	Metadata	Tile Index	LAS (28.3 GB)	Download (4.4 GB)
+Image Service	Download (4.7 GB)
+Image Service	
+Carroll	2020	Metadata	Tile Index	LAS (109.0 GB)	Download (23.6 GB)
+Image Service	Download (15.9 GB)
+Image Service	
+Cass	2017	Metadata	Tile Index	LAS (37.1 GB)	Download (12.2 GB)
+Image Service	Download (12.1 GB)
+Image Service	
+Champaign	2020	Metadata	Tile Index	LAS (226.0 GB)	Download (28.4 GB)
+Image Service	Download (47.8 GB)
+Image Service	
+Champaign	2008	Metadata	Tile Index	LAS (26.6 GB)	Download (6.8 GB)
+Image Service	Download (7.0 GB)
+Image Service	
+Christian	2015	Metadata	Tile Index	LAS (100.0 GB)	Download (18.5 GB)
+Image Service	Download (16.8 GB)
+Image Service	
+Christian	2024	Metadata	Tile Index	LAZ (660.0 GB)	Download (73.5 GB)
+Image Service	Download (80.0 GB)
+Image Service	
+Clark	2020	Metadata	Tile Index	LAS (274.0 GB)	Download (27.2 GB)
+Image Service	Download (28.7 GB)
+Image Service	
+Clark	2011	Metadata	Tile Index	LAS (17.5 GB)	Download (5.3 GB)
+Image Service	Download (5.5 GB)
+Image Service	
+Clay	2011	Metadata	Tile Index	LAS (17.0 GB)	Download (6.9 GB)
+Image Service	Download (7.1 GB)
+Image Service	
+Clay	2021	Metadata	Tile Index	LAS (132.0 GB)	Download (25.3 GB)
+Image Service	Download (25.9 GB)
+Image Service	
+Clinton	2015	Metadata	Tile Index	LAS (24.6 GB)	Download (7.3 GB)
+Image Service	Download (8.0 GB)
+Image Service	
+Clinton	2021	Metadata	Tile Index	LAS (201.0 GB)	Download (25.7 GB)
+Image Service	Download (26.7 GB)
+Image Service	
+Coles	2020	Metadata	Tile Index	LAS (232.0 GB)	Download (26.0 GB)
+Image Service	Download (26.8 GB)
+Image Service	
+Coles	2011	Metadata	Tile Index	LAS (15.9 GB)	Download (4.2 GB)
+Image Service	Download (4.3 GB)
+Image Service	
+Cook	2017	Metadata	Tile Index	LAS (998.0 GB)	Download (58.9 GB)
+Image Service	Download (67.4 GB)
+Image Service	
+Cook	2022	Metadata	Tile Index	Tile Index Graphic, LAS Part 1 (912.0 GB)	Download (131.0 GB)
+Image Service	Download (147.0 GB)
+Image Service	
+Cook	2022	Metadata	Tile Index	Tile Index Graphic, LAS Part 2 (803.0 GB)	Download (131.0 GB)
+Image Service	Download (147.0 GB)
+Image Service	
+Cook	2022	Metadata	Tile Index	Tile Index Graphic, LAS Part 3 (790.0 GB)	Download (131.0 GB)
+Image Service	Download (147.0 GB)
+Image Service	
+Cook	2022	Metadata	Tile Index	Tile Index Graphic, LAS Part 4 (815.0 GB)	Download (131.0 GB)
+Image Service	Download (147.0 GB)
+Image Service	
+Cook	2022	Metadata	Tile Index	Tile Index Graphic, LAS Part 5 (722.0 GB)	Download (131.0 GB)
+Image Service	Download (147.0 GB)
+Image Service	
+Crawford	2020	Metadata	Tile Index	LAS (125.0 GB)	Download (26.6 GB)
+Image Service	Download (28.4 GB)
+Image Service	
+Crawford	2011	Metadata	Tile Index	LAS (17.0 GB)	Download (4.7 GB)
+Image Service	Download (5.0 GB)
+Image Service	
+Cumberland	2020	Metadata	Tile Index	LAS (167.0 GB)	Download (18.1 GB)
+Image Service	Download (19.0 GB)
+Image Service	
+Cumberland	2011	Metadata	Tile Index	LAS (16.7 GB)	Download (3.7 GB)
+Image Service	Download (3.8 GB)
+Image Service	
+DeKalb	2009	Metadata	Tile Index	LAS (23.3 GB)	Download (7.4 GB)
+Image Service	Download (7.8 GB)
+Image Service	
+DeKalb	2018	Metadata	Tile Index	LAS (73.3 GB)	Download (16.8 GB)
+Image Service	Download (17.6 GB)
+Image Service	
+DeWitt	2022	Metadata	Tile Index	LAS (166.0 GB)	Download (22.1 GB)
+Image Service	Download (22.8 GB)
+Image Service	
+DeWitt	2012	Metadata	Tile Index	LAS (27.6 GB)	Download (7.5 GB)
+Image Service	Download (7.8 GB)
+Image Service	
+Douglas	2020	Metadata	Tile Index	LAS (179.0 GB)	Download (20.7 GB)
+Image Service	Download (21.0 GB)
+Image Service	
+Douglas	2012	Metadata	Tile Index	LAS (26.7 GB)	Download (7.5 GB)
+Image Service	Download (7.7 GB)
+Image Service	
+DuPage	2022	Metadata	Tile Index	LAS (137.0 GB)	Download (18.9 GB)
+Image Service	Download (20.3 GB)
+Image Service	
+DuPage	2017	Metadata	Tile Index	LAS (540.0 GB)	Download (20.4 GB)
+Image Service	Download (23.2 GB)
+Image Service	
+DuPage	2006	Metadata	Tile Index	LAS (14.6 GB)	Download (2.9 GB)
+Image Service		
+DuPage	2014	Metadata	Tile Index	LAS (53.7 GB)	Download (20.4 GB)
+Image Service	Download (23.4 GB)
+Image Service	
+Edgar	2020	Metadata	Tile Index	LAS (306.0 GB)	Download (34.7 GB)
+Image Service	Download (33.3 GB)
+Image Service	
+Edgar	2012	Metadata	Tile Index	LAS (46.0 GB)	Download (12.8 GB)
+Image Service	Download (12.6 GB)
+Image Service	
+Edwards	2020	Metadata	Tile Index	LAS (106.0 GB)	Download (14.5 GB)
+Image Service	Download (14.9 GB)
+Image Service	
+Edwards	2011	Metadata	Tile Index	LAS (13.8 GB)	Download (2.7 GB)
+Image Service	Download (2.8 GB)
+Image Service	
+Effingham	2011	Metadata	Tile Index	LAS (17.4 GB)	Download (5.3 GB)
+Image Service	Download (5.5 GB)
+Image Service	
+Effingham	2021	Metadata	Tile Index	LAS (128.0 GB)	Download (26.7 GB)
+Image Service	Download (27.0 GB)
+Image Service	
+Fayette	2021	Metadata	Tile Index	LAS (219.0 GB)	Download (47.8 GB)
+Image Service	Download (42.0 GB)
+Image Service	
+Fayette	2011	Metadata	Tile Index	LAS (25.9 GB)	Download (7.5 GB)
+Image Service	Download (8.1 GB)
+Image Service	
+Ford	2015	Metadata	Tile Index	LAS (36.6 GB)	Download (14.9 GB)
+Image Service	Download (15.1 GB)
+Image Service	
+Ford	2023	Metadata	Tile Index	LAS (321.0 GB)	Download (56.5 GB)
+Image Service	Download (57.2 GB)
+Image Service	
+Franklin	2020	Metadata	Tile Index	LAS (158.0 GB)	Download (24.0 GB)
+Image Service	Download (26.1 GB)
+Image Service	
+Franklin	2014	Metadata	Tile Index	LAS (24.5 GB)	Download (6.0 GB)
+Image Service	Download (7.3 GB)
+Image Service	
+Fulton	2022	Metadata	Tile Index	LAS (417.0 GB)	Download (48.2 GB)
+Image Service	Download (51.2 GB)
+Image Service	
+Fulton	2012	Metadata	Tile Index	LAS (35.5 GB)	Download (9.6 GB)
+Image Service	Download (10.0 GB)
+Image Service	
+Gallatin	2020	Metadata	Tile Index	LAS (184.0 GB)	Download (19.7 GB)
+Image Service	Download (19.4 GB)
+Gallatin	2011	Metadata	Tile Index	LAS (11.9 GB)	Download (2.1 GB)
+Image Service	Download (2.2 GB)
+Image Service	
+Greene	2017	Metadata	Tile Index	LAS (79.1 GB)	Download (18.5 GB)
+Image Service	Download (19.0 GB)
+Image Service	
+Grundy	2018	Metadata	Tile Index	LAS (53.0 GB)	Download (11.7 GB)
+Download (12.5 GB)
+Grundy	2008	Metadata	Tile Index	LAS (16.3 GB)	Download (2.9 GB)
+Image Service	Download (3.1 GB)
+Image Service	
+Hamilton	2011	Metadata	Tile Index	LAS (16.7 GB)	Download (2.9 GB)
+Image Service	Download (3.0 GB)
+Image Service	
+Hamilton	2020	Metadata	Tile Index	LAS (220.0 GB)	Download (32.9 GB)
+Image Service	Download (32.6 GB)
+Image Service	
+Hancock	2017	Metadata	Tile Index	LAS (70.4 GB)	Download (24.4 GB)
+Download (25.4 GB)
+Hardin	2014	Metadata	Tile Index	LAS (36.6 GB)	Download (4.8 GB)
+Download (5.3 GB)
+Hardin	2020	Metadata	Tile Index	LAS (91.3 GB)	Download (11.4 GB)
+Image Service	Download (12.1 GB)
+Image Service	
+Henderson	2012	Metadata	Tile Index	LAS (17.1 GB)	Download (4.3 GB)
+Image Service	Download (4.5 GB)
+Image Service	
+Henderson	2022	Metadata	Tile Index	LAS (184.0 GB)	Download (20.0 GB)
+Download (21.6 GB)
+Henry	2009	Metadata	Tile Index	LAS (26.7 GB)	Download (7.5 GB)
+Image Service	Download (7.8 GB)
+Image Service	
+Henry	2020	Metadata	Tile Index	LAS (273.0 GB)	Download (25.4 GB)
+Image Service	Download (26.1 GB)
+Image Service	
+Iroquois	2015	Metadata	Tile Index	LAS (125.0 GB)	Download (32.9 GB)
+Image Service	Download (33.8 GB)
+Image Service	
+Iroquois	2024	Metadata	Tile Index	LAS (751.0 GB)	Download (116.0 GB)
+Image Service	Download (119.0 GB)
+Image Service	
+Jackson	2014	Metadata	Tile Index	LAS (47.6 GB)	Download (10.0 GB)
+Image Service	Download (10.7 GB)
+Image Service	
+Jackson	2021	Metadata	Tile Index	LAS (310.0 GB)	Download (34.4 GB)
+Image Service	Download (36.1 GB)
+Image Service	
+Jasper	2011	Metadata	Tile Index	LAS (16.7 GB)	Download (5.4 GB)
+Image Service	Download (5.6 GB)
+Image Service	
+Jasper	2020	Metadata	Tile Index	LAS (129.0 GB)	Download (29.3 GB)
+Image Service	Download (30.4 GB)
+Image Service	
+Jefferson	2015	Metadata	Tile Index	LAS (29.7 GB)	Download (8.2 GB)
+Image Service	Download (8.8 GB)
+Image Service	
+Jefferson	2021	Metadata	Tile Index	LAS (260.0 GB)	Download (32.7 GB)
+Image Service	Download (35.1 GB)
+Image Service	
+Jefferson	2012	Metadata			Download (3.1 GB)
+Image Service	Download (3.2 GB)
+Image Service	
+Jersey	2011	Metadata	Tile Index	LAS (12.9 GB)	Download (2.4 GB)
+Image Service	Download (2.5 GB)
+Image Service	
+Jersey	2021	Metadata	Tile Index	LAS (147.0 GB)	Download (22.2 GB)
+Image Service	Download (22.8 GB)
+Image Service	
+Jo Daviess	2009	Metadata	Tile Index	LAS (40.1 GB)	Download (6.4 GB)
+Image Service	Download (6.7 GB)
+Image Service	
+Jo Daviess	2020	Metadata	Tile Index	LAS (241.0 GB)	Download (21.5 GB)
+Image Service	Download (21.7 GB)
+Image Service	
+Johnson	2020	Metadata	Tile Index	LAS (225.0 GB)	Download (21.7 GB)
+Image Service	Download (22.9 GB)
+Image Service	
+Johnson	2012	Metadata	Tile Index	LAS (15.8 GB)	Download (5.7 GB)
+Image Service	Download (5.9 GB)
+Image Service	
+Kane	2017	Metadata	Tile Index	LAS (413.0 GB)	Download (24.6 GB)
+Image Service	Download (26.8 GB)
+Image Service	
+Kane	2008	Metadata	Tile Index	LAS (13.6 GB)	Download (3.7 GB)
+Image Service	Download (3.9 GB)
+Image Service	
+Kankakee	2014	Metadata	Tile Index	LAS (116.0 GB)	Download (21.4 GB)
+Image Service	Download (22.2 GB)
+Image Service	
+Kankakee	2023	Metadata	Tile Index	LAS (478.0 GB)	Download (90.9 GB)
+Image Service	Download (78.3 GB)
+Image Service	
+Kendall	2010	Metadata	Tile Index	LAS (10.0 GB)	Download (3.6 GB)
+Image Service	Download (3.9 GB)
+Image Service	
+Kendall	2018	Metadata	Tile Index	LAS (41.5 GB)	Download (8.8 GB)
+Download (9.3 GB)
+Knox	2022	Metadata	Tile Index	LAS (345.0 GB)	Download (38.1 GB)
+Image Service	Download (39.1 GB)
+Image Service	
+Knox	2012	Metadata	Tile Index	LAS (26.4 GB)	Download (12.8 GB)
+Image Service	Download (13.2 GB)
+Image Service	
+Lake	2007	Metadata	Tile Index	LAS (18.3 GB)	Download (9.2 GB)
+Image Service	Download (7.0 GB)
+Image Service	
+Lake	2017	Metadata	Tile Index	LAS (432.0 GB)	Download (22.8 GB)
+Image Service	Download (26.7 GB)
+Image Service	
+LaSalle	2017	Metadata	Tile Index	LAS (420.0 GB)	Download (57.4 GB)
+Image Service	Download (60.1 GB)
+Image Service	
+Lawrence	2020	Metadata	Tile Index	LAS (101.0 GB)	Download (23.6 GB)
+Image Service	Download (25.1 GB)
+Image Service	
+Lawrence	2011	Metadata	Tile Index	LAS (12.9 GB)	Download (4.3 GB)
+Image Service	Download (4.4 GB)
+Image Service	
+Lee	2020	Metadata	Tile Index	LAS (166.0 GB)	Download (22.2 GB)
+Image Service	Download (23.0 GB)
+Image Service	
+Lee	2009	Metadata	Tile Index	LAS (31.0 GB)	Download (6.9 GB)
+Image Service	Download (7.1 GB)
+Image Service	
+Livingston	2015	Metadata	Tile Index	LAS (81.6 GB)	Download (30.9 GB)
+Image Service	Download (31.9 GB)
+Image Service	
+Livingston	2024	Metadata	Tile Index	LAS (713.0 GB)	Download (114.0 GB)
+Image Service	Download (117.0 GB)
+Image Service	
+Logan	2013	Metadata	Tile Index	LAS (114.0 GB)	Download (31.7 GB)
+Image Service	Download (33.6 GB)
+Logan	2023	Metadata	Tile Index	LAS (525.0 GB)	Download (73.1 GB)
+Image Service	Download (74.0 GB)
+Image Service	
+Macon	2011	Metadata	Tile Index	LAS (16.9 GB)	Download (4.7 GB)
+Image Service	Download (4.8 GB)
+Image Service	
+Macon	2021	Metadata	Tile Index	LAS (152.0 GB)	Download (31.7 GB)
+Image Service	Download (32.2 GB)
+Image Service	
+Macoupin	2017	Metadata	Tile Index	LAS (124.0 GB)	Download (27.9 GB)
+Image Service	Download (28.9 GB)
+Image Service	
+Madison	2014	Metadata	Tile Index	LAS (136.0 GB)	Download (27.2 GB)
+Image Service	Download (29.0 GB)
+Image Service	
+Madison	2023	Metadata	Tile Index	LAZ (785.0 GB)	Download (80.8 GB)
+Image Service	Download (85.8 GB)
+Image Service	
+Marion	2021	Metadata	Tile Index	LAS (171.0 GB)	Download (32.5 GB)
+Image Service	Download (33.8 GB)
+Image Service	
+Marion	2015	Metadata	Tile Index	LAS (38.7 GB)	Download (8.1 GB)
+Image Service	Download (8.5 GB)
+Image Service	
+Marshall	2022	Metadata	Tile Index	LAS (184.0 GB)	Download (20.8 GB)
+Image Service	Download (22.3 GB)
+Image Service	
+Marshall	2012	Metadata	Tile Index	LAS (13.4 GB)	Download (4.4 GB)
+Image Service	Download (4.6 GB)
+Image Service	
+Mason	2017	Metadata	Tile Index	LAS (156.0 GB)	Download (16.4 GB)
+Image Service	Download (17.7 GB)
+Image Service	
+Massac	2020	Metadata	Tile Index	LAS (51.6 GB)	Download (14.5 GB)
+Image Service	Download (15.3 GB)
+Image Service	
+Massac	2012	Metadata	Tile Index	LAS (9.7 GB)	Download (3.5 GB)
+Download (3.8 GB)
+McDonough	2022	Metadata	Tile Index	LAS (576.0 GB)	Download (31.9 GB)
+Image Service	Download (32.3 GB)
+Image Service	
+McDonough	2012	Metadata	Tile Index	LAS (21.7 GB)	Download (7.9 GB)
+Image Service	Download (8.1 GB)
+Image Service	
+McHenry	2017	Metadata	Tile Index	LAS (179.0 GB)	Download (31.1 GB)
+Image Service	Download (33.5 GB)
+Image Service	
+McHenry	2022	Metadata	Tile Index	LAS (369.0 GB)	Download (68.6 GB)
+Image Service	Download (73.4 GB)
+Image Service	
+McHenry	2008	Metadata	Tile Index	LAS (16.9 GB)	Download (4.5 GB)
+Image Service	Download (4.8 GB)
+Image Service	
+McLean	2022	Metadata	Tile Index	LAS (465.0 GB)	Download (58.8 GB)
+Image Service	Download (59.6 GB)
+Image Service	
+McLean	2012	Metadata	Tile Index	LAS (78.4 GB)	Download (23.4 GB)
+Image Service	Download (24.1 GB)
+Image Service	
+Menard	2018	Metadata	Tile Index	LAS (93.2 GB)	Download (9.9 GB)
+Image Service	Download (10.3 GB)
+Image Service	
+Mercer	2012	Metadata	Tile Index	LAS (22.3 GB)	Download (8.0 GB)
+Image Service	Download (8.4 GB)
+Image Service	
+Mercer	2022	Metadata	Tile Index	LAS (276.0 GB)	Download (31.5 GB)
+Image Service	Download (32.5 GB)
+Image Service	
+Monroe	2012	Metadata	Tile Index	LAS (20.2 GB)	Download (5.6 GB)
+Image Service	Download (5.8 GB)
+Image Service	
+Monroe	2020	Metadata	Tile Index	LAS (187.0 GB)	Download (23.9 GB)
+Image Service	Download (25.1 GB)
+Image Service	
+Montgomery	2017	Metadata	Tile Index	LAS (103.0 GB)	Download (23.5 GB)
+Image Service	Download (24.1 GB)
+Image Service	
+Morgan	2017	Metadata	Tile Index	LAS (155.0 GB)	Download (17.1 GB)
+Image Service	Download (17.7 GB)
+Image Service	
+Moultrie	2021	Metadata	Tile Index	LAS (89.1 GB)	Download (18.9 GB)
+Image Service	Download (19.1 GB)
+Image Service	
+Moultrie	2011	Metadata	Tile Index	LAS (10.5 GB)	Download (2.9 GB)
+Image Service	Download (3.0 GB)
+Image Service	
+Ogle	2009	Metadata	Tile Index	LAS (34.0 GB)	Download (7.5 GB)
+Image Service	Download (7.7 GB)
+Image Service	
+Ogle	2020	Metadata	Tile Index	LAS (189.0 GB)	Download (24.2 GB)
+Image Service	Download (25.2 GB)
+Image Service	
+Peoria	2022	Metadata	Tile Index	LAS (291.0 GB)	Download (41.6 GB)
+Image Service	Download (36.3 GB)
+Image Service	
+Peoria	2012	Metadata	Tile Index	LAS (24.5 GB)	Download (6.8 GB)
+Image Service	Download (7.3 GB)
+Image Service	
+Peoria	2008				Download (3.9 GB)
+Image Service	Download (3.8 GB)
+Image Service	
+Perry	2021	Metadata	Tile Index	LAS (145.0 GB)	Download (25.8 GB)
+Image Service	Download (27.7 GB)
+Image Service	
+Perry	2014	Metadata	Tile Index	LAS (33.1 GB)	Download (8.2 GB)
+Image Service	Download (7.9 GB)
+Image Service	
+Piatt	2022	Metadata	Tile Index	LAS (169.0 GB)	Download (21.6 GB)
+Image Service	Download (22.1 GB)
+Image Service	
+Piatt	2012	Metadata	Tile Index	LAS (29.9 GB)	Download (8.8 GB)
+Image Service	Download (9.0 GB)
+Image Service	
+Piatt	2011			LAS (60.8 GB)	Download (16.5 GB)
+Image Service	Download (17.9 GB)
+Image Service	
+Pike	2023	Metadata	Tile Index	LAS (883.0 GB)	Download (97.7 GB)
+Image Service	Download (101.0 GB)
+Image Service	
+Pike	2015	Metadata	Tile Index	LAS (197.0 GB)	Download (45.5 GB)
+Image Service	Download (106.7 GB)
+Image Service	
+Pope	2020	Metadata	Tile Index	LAS (146.0 GB)	Download (23.3 GB)
+Image Service	Download (38.8 GB)
+Image Service	
+Pope	2014	Metadata	Tile Index	LAS (74.9 GB)	Download (10.5 GB)
+Image Service	Download (9.7 GB)
+Image Service	
+Pulaski	2012	Metadata	Tile Index	LAS (8.1 GB)	Download (2.2 GB)
+Image Service	Download (2.3 GB)
+Image Service	
+Pulaski	2020	Metadata	Tile Index	LAS (54.5 GB)	Download (12.3 GB)
+Image Service	Download (13.4 GB)
+Image Service	
+Putnam	2022	Metadata	Tile Index	LAS (79.9 GB)	Download (16.4 GB)
+Image Service	Download (10.6 GB)
+Image Service	
+Putnam	2012	Metadata	Tile Index	LAS (5.6 GB)	Download (2.0 GB)
+Image Service	Download (2.2 GB)
+Image Service	
+Randolph	2012	Metadata	Tile Index	LAS (32.2 GB)	Download (8.4 GB)
+Image Service	Download (8.8 GB)
+Image Service	
+Randolph	2020	Metadata	Tile Index	LAS (276.0 GB)	Download (35.3 GB)
+Image Service	Download (37.2 GB)
+Image Service	
+Richland	2011	Metadata	Tile Index	LAS (13.6 GB)	Download (4.9 GB)
+Image Service	Download (5.1 GB)
+Image Service	
+Richland	2021	Metadata	Tile Index	LAS (91.1 GB)	Download (21.2 GB)
+Image Service	Download (21.5 GB)
+Image Service	
+Rock Island	2020	Metadata	Tile Index	LAS (124.0 GB)	Download (14.6 GB)
+Image Service	Download (16.3 GB)
+Image Service	
+Rock Island	2009	Metadata	Tile Index	LAS (21.8 GB)	Download (4.3 GB)
+Image Service	Download (4.7 GB)
+Image Service	
+Saline	2020	Metadata	Tile Index	LAS (230.0 GB)	Download (23.8 GB)
+Image Service	Download (25.0 GB)
+Image Service	
+Saline	2011	Metadata	Tile Index	LAS (15.8 GB)	Download (2.6 GB)
+Image Service	Download (2.8 GB)
+Image Service	
+Sangamon	2018	Metadata	Tile Index	LAS (237.0 GB)	Download (25.5 GB)
+Image Service	Download (26.8 GB)
+Image Service	
+Schuyler	2017	Metadata	Tile Index	LAS (164.0 GB)	Download (14.3 GB)
+Image Service	Download (15.0 GB)
+Image Service	
+Scott	2015	Metadata	Tile Index	LAS (53.4 GB)	Download (30.5 GB)
+Image Service	Download (30.9 GB)
+Image Service	
+Scott	2023	Metadata	Tile Index	LAS (269.0 GB)	Download (31.6 GB)
+Image Service	Download (32.5 GB)
+Image Service	
+Shelby	2011	Metadata	Tile Index	LAS (23.7 GB)	Download (8.2 GB)
+Image Service	Download (8.5 GB)
+Image Service	
+Shelby	2021	Metadata	Tile Index	LAS (214.0 GB)	Download (42.4 GB)
+Image Service	Download (43.3 GB)
+Image Service	
+St. Clair	2012	Metadata	Tile Index	LAS (30.4 GB)	Download (9.4 GB)
+Image Service	Download (9.8 GB)
+Image Service	
+St. Clair	2020	Metadata	Tile Index	LAS (309.0 GB)	Download (38.7 GB)
+Image Service	Download (41.0 GB)
+Image Service	
+Stark	2022	Metadata	Tile Index	LAS (122.0 GB)	Download (15.4 GB)
+Image Service	Download (15.6 GB)
+Image Service	
+Stark	2012	Metadata	Tile Index	LAS (9.5 GB)	Download (4.2 GB)
+Image Service	Download (4.3 GB)
+Image Service	
+Stephenson	2009	Metadata	Tile Index	LAS (24.2 GB)	Download (6.6 GB)
+Image Service	Download (6.2 GB)
+Image Service	
+Stephenson	2020	Metadata	Tile Index	LAS (188.0 GB)	Download (18.6 GB)
+Image Service	Download (20.4 GB)
+Image Service	
+Tazewell	2012	Metadata	Tile Index	LAS (23.4 GB)	Download (7.0 GB)
+Image Service	Download (7.3 GB)
+Image Service	
+Tazewell	2022	Metadata	Tile Index	LAS (272.0 GB)	Download (35.7 GB)
+Image Service	Download (38.1 GB)
+Image Service	
+Union	2011	Metadata	Tile Index	LAS (20.5 GB)	Download (2.8 GB)
+Image Service	Download (2.9 GB)
+Image Service	
+Union	2020	Metadata	Tile Index	LAS (118.0 GB)	Download (26.5 GB)
+Image Service	Download (27.9 GB)
+Image Service	
+Vermilion	2012	Metadata	Tile Index	LAS (68.6 GB)	Download (17.9 GB)
+Image Service	Download (18.6 GB)
+Image Service	
+Vermilion	2021	Metadata	Tile Index	LAS (242.0 GB)	Download (48.1 GB)
+Image Service	Download (49.2 GB)
+Image Service	
+Wabash	2011	Metadata	Tile Index	LAS (8.6 GB)	Download (2.8 GB)
+Image Service	Download (3.0 GB)
+Image Service	
+Wabash	2020	Metadata	Tile Index	LAS (108.0 GB)	Download (14.7 GB)
+Image Service	Download (15.4 GB)
+Image Service	
+Warren	2022	Metadata	Tile Index	LAS (234.0 GB)	Download (28.4 GB)
+Image Service	Download (28.9 GB)
+Image Service	
+Warren	2012	Metadata	Tile Index	LAS (19.1 GB)	Download (7.4 GB)
+Image Service	Download (7.3 GB)
+Image Service	
+Washington	2021	Metadata	Tile Index	LAS (268.0 GB)	Download (32.5 GB)
+Image Service	Download (33.7 GB)
+Image Service	
+Washington	2015	Metadata	Tile Index	LAS (28.7 GB)	Download (8.7 GB)
+Image Service	Download (9.1 GB)
+Image Service	
+Wayne	2011	Metadata	Tile Index	LAS (25.1 GB)	Download (8.3 GB)
+Image Service	Download (8.5 GB)
+Image Service	
+Wayne	2020	Metadata	Tile Index	LAS (178.0 GB)	Download (41.8 GB)
+Image Service	Download (43.4 GB)
+Image Service	
+White	2020	Metadata	Tile Index	LAS (225.0 GB)	Download (29.9 GB)
+Image Service	Download (30.9 GB)
+Image Service	
+White	2011	Metadata	Tile Index	LAS (18.1 GB)	Download (3.6 GB)
+Image Service	Download (3.4 GB)
+Image Service	
+Whiteside	2020	Metadata	Tile Index	LAS (146.0 GB)	Download (22.0 GB)
+Image Service	Download (23.0 GB)
+Whiteside	2009	Metadata	Tile Index	LAS (32.1 GB)	Download (6.6 GB)
+Image Service	Download (6.9 GB)
+Image Service	
+Will	2014	Metadata	Tile Index	LAS (110.0 GB)	Download (28.7 GB)
+Image Service	Download (31.2 GB)
+Image Service	
+Will	2004				Download (7.2 GB)
+Image Service	Download (24.6 GB)
+Will	2021	Metadata	Tile Index	LAS (595.0 GB)	Download (83.5 GB)
+Image Service	Download (110.5 GB)
+Williamson	2020	Metadata	Tile Index	LAS (297.0 GB)	Download (26.6 GB)
+Image Service	Download (29.0 GB)
+Image Service	
+Williamson	2011	Metadata	Tile Index	LAS (18.0 GB)	Download (2.3 GB)
+Image Service	Download (3.3 GB)
+Image Service	
+Winnebago	2007	Metadata	Tile Index	LAS (37.6 GB)	Download (3.3 GB)
+Download (3.2 GB)
+Winnebago	2018	Metadata	Tile Index	LAS (139.0 GB)	Download (29.6 GB)
+Image Service	Download (31.0 GB)
+Image Service	
+Woodford	2022	Metadata	Tile Index	LAS (243.0 GB)	Download (29.7 GB)
+Image Service	Download (30.9 GB)
+Image Service	
+Woodford	2012	Metadata	Tile Index	LAS (17.5 GB)	Download (5.8 GB)
+Image Service	Download (6.1 GB)
+Image Service	
+Special Area Collections
+Collectionsort descending	Year	Metadata	Derivatives	LAS	
+City of Champaign-Urbana	2019	Metadata	Derivatives (10.4 GB)	LAS (51.5 GB)	
+Illinois River and Mississippi River South	2011	Metadata	Derivatives (28.4 GB)	LAS (60.7 GB)	
+Mississippi River North	2011	Metadata	Derivatives (17.6 GB)	LAS (80.5 GB)	
+Sangamon River	2012	Metadata	Derivatives (1.0 GB)	LAS (3.6 GB)	
+Wabash River	2012	Metadata	Derivatives (47.4 GB)	LAS (86.1 GB)	
+Data Definitions
+Derivatives:
+
+Datasets in ArcGrid format are available for selected Illinois counties. The original, classified LiDAR data point cloud has been processed to create a digital terrain model (DTM) and a digital surface model (DSM) for each county. Additionally, each county .zip file contains an associated shaded relief model, or ‘hillshade’, an ArcGIS v.10.1 .mxd file, and also ArcGrid pyramid files and statistics to facilitate display and analysis. This zip file includes the LiDAR data point cloud processed into created digital terrain models (DTM) and a digital surface models (DSM) for each county. Additionally, each county .zip file contains an associated shaded relief model, or ‘hillshade’, an ArcGIS v.10.1 .mxd file, and also ArcGrid pyramid files and statistics to facilitate display and analysis.
+
+Digital Surface Model (DSM) image for comparison
+Digital Surface Model (DSM)Digital Terrain Model (DTM) image for comparison
+Digital Terrain Model (DTM)Digital Elevation Model (DEM)
+Digital Elevation Model (DEM)LAS Point Cloud
+LAS Point Cloud
+DSM: all returns
+Processing all returns in the classified point cloud that represent both the ground surface and aboveground features (buildings, roadways and overpasses, vegetation, etc.) produces a DSM. A DSM is commonly referred to as the ‘First Returns’ reflective surface model.
+
+ 
+
+DTM: ground returns with hydrologic breaklines
+When only the ground returns in a classified point cloud are used, the resulting hydro-flattened grid of bare-earth elevations is a DTM. Also, lake surfaces are smoothed and stream courses are conditioned for downhill flow using breakline data. This subset of the processed returns from the airborne laser sensor represent the ground surface and is commonly referred to as the ‘Bare Earth’ point cloud.
+
+ 
+
+DEM: ground returns without hydrologic breaklines
+When hydro-flattening is not imposed during processing of the ground returns, either because of missing or insufficient breakline data, the resulting Bare Earth elevation grid is classified as a DEM.
+
+ 
+
+LAS
+The LAS file format is a public file format for viewing the LiDAR point cloud data.  Each data point is recorded with precise horizontal position, vertical elevation, and other attribute values. 
+
+ 
+
+Metadata
+This is a file that describes the content, quality, condition, origin and other characteristics of the LiDAR data collection. The Metadata file also includes the appropriate citation to use when citing the Lidar data.
+
+ 
+
+Tile Index
+This is a shapefile of the point cloud tile boundaries with tile name.  This file is helpful to view if you are interested in a smaller subset of the data to select specific tile names.
+
+ 
+
+Breaklines
+These are the hydrological boundary lines that define streams, shorelines, and dams. These are a linear GIS feature that describes a change in the smoothness or continuity of a surface. These allow us to create Hydro –enforced Digital Terrain Models (DTM).
+
+ 
+
+DAT/DGN/TIn Available
+This column will be checked off if there are available DAT,DGN or TIN files available for this collection.

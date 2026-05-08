@@ -15,7 +15,7 @@ def generate_tiles_direct(
     max_zoom: int = 16,
 ) -> Path:
     """
-    Generate XYZ tile directory from a hillshade raster.
+    Generate TMS tile directory from a hillshade raster.
     """
     input_raster = Path(input_raster)
     output_dir = Path(output_dir)
@@ -29,7 +29,7 @@ def generate_tiles_direct(
         "gdal2tiles.py",
         "-z", f"{min_zoom}-{max_zoom}",
         "-w", "none",
-        "--xyz",
+        "--tms",
         "--processes=4",
         str(input_raster),
         str(output_dir),
@@ -72,7 +72,7 @@ def generate_mbtiles_from_dir(
     output_path: Path,
 ) -> Path:
     """
-    Pack an XYZ tiles directory into MBTiles.
+    Pack a TMS tiles directory into MBTiles.
     """
     tiles_dir = Path(tiles_dir)
     output_path = Path(output_path)
@@ -82,6 +82,7 @@ def generate_mbtiles_from_dir(
     
     cmd = [
         "mb-util",
+        "--scheme=tms",
         str(tiles_dir),
         str(output_path),
         "--image_format=png",
@@ -91,7 +92,23 @@ def generate_mbtiles_from_dir(
     if result.returncode != 0:
         raise RuntimeError(f"mb-util failed: {result.stderr}")
     
+    # Ensure scheme metadata matches tile coordinate system
+    # gdal2tiles --tms produces TMS coordinates; mb-util preserves them
+    _set_mbtiles_metadata(output_path, "scheme", "tms")
+    
     return output_path
+
+
+def _set_mbtiles_metadata(mbtiles_path: Path, key: str, value: str) -> None:
+    """Set a metadata value in an MBTiles file."""
+    import sqlite3 as sqlite3_mod
+    conn = sqlite3_mod.connect(str(mbtiles_path))
+    conn.execute(
+        "INSERT OR REPLACE INTO metadata (name, value) VALUES (?, ?)",
+        (key, value)
+    )
+    conn.commit()
+    conn.close()
 
 
 def convert_to_pmtiles(

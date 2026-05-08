@@ -1,0 +1,290 @@
+name: Generate Hillshades (Simple)
+
+on:
+  push:
+    branches: [main, v2-simmon]
+    paths:
+      - 'requests.yaml'
+  workflow_dispatch:
+    inputs:
+      county:
+        description: 'County name'
+        required: true
+      styles:
+        description: 'Styles (comma-separated)'
+        default: 'dark'
+      exaggerations:
+        description: 'Exaggerations (comma-separated)'
+        default: '9'
+
+permissions:
+  contents: write
+
+jobs:
+  parse-requests:
+    runs-on: ubuntu-latest
+    outputs:
+      counties: ${{ steps.parse.outputs.counties }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Parse pending requests
+        id: parse
+        run: |
+          pip install pyyaml
+          python3 << 'EOF'
+          import yaml, json, os
+          
+          with open('requests.yaml') as f:
+              data = yaml.safe_load(f)
+          
+          pending = [
+              {
+                  'county': r['county'],
+                  'dem': r.get('dem', 'dtm'),
+                  'styles': ','.join(r.get('styles', ['dark'])),
+                  'exaggerations': ','.join(str(e) for e in r.get('exaggerations', [9])),
+                  'zoom': r.get('zoom', '10-16')
+              }
+              for r in data.get('requests', [])
+              if r.get('status') == 'pending'
+          ]
+          
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"counties={json.dumps(pending)}\n")
+          
+          print(f"Found {len(pending)} pending request(s):")
+          for p in pending:
+              print(f"  - {p['county']}: {p['styles']} @ {p['exaggerations']}x")
+          EOF
+
+  generate:
+    needs: parse-requests
+    if: needs.parse-requests.outputs.counties != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        request: ${{ fromJson(needs.parse-requests.outputs.counties) }}
+      max-parallel: 1
+      fail-fast: false
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+      
+      - name: Generate hillshades
+        env:
+          COUNTY: ${{ matrix.request.county }}
+          DEM: ${{ matrix.request.dem }}
+          STYLES: ${{ matrix.request.styles }}
+          EXAGGERATIONS: ${{ matrix.request.exaggerations }}
+          ZOOM: ${{ matrix.request.zoom }}
+          SECURITY_GROUP: ${{ secrets.AWS_SECURITY_GROUP }}
+          KEY_PAIR_NAME: ${{ secrets.AWS_KEY_PAIR_NAME }}
+          IAM_INSTANCE_PROFILE: ${{ secrets.AWS_IAM_INSTANCE_PROFILE }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          WORKER_INSTANCE_TYPE: c7g.2xlarge
+        run: |
+          set -x
+          
+          echo "🗺️  Generating hillshades for $COUNTY"
+          echo "   DEM: $DEM"
+          echo "   Styles: $STYLES"
+          echo "   Exaggerations: $EXAGGERATIONS"
+          echo "   Zoom: $ZOOM"
+          
+          # Write SSH key before running generate-aws.sh (it needs it for SG rules + monitoring)
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TILE_SERVER_SSH_KEY }}" > ~/.ssh/mapserver-ec2.pem
+          chmod 600 ~/.ssh/mapserver-ec2.pem
+          
+          cd aws
+          
+          # Run the proven generate-aws.sh script
+          ./generate-aws.sh "$COUNTY" \
+            --dem "$DEM" \
+            --style "$STYLES" \
+            --exaggeration "$EXAGGERATIONS" \
+            --zoom "$ZOOM" 2>&1 | tee /tmp/generate-${COUNTY}.log
+          
+          # Extract worker info
+          if [ -f "/tmp/hillshade-worker-${COUNTY}.env" ]; then
+            source /tmp/hillshade-worker-${COUNTY}.env
+            echo "Worker: $WORKER_IP ($WORKER_INSTANCE_ID)"
+          else
+            echo "❌ Worker info not found, script may have failed"
+            aws s3 cp /tmp/generate-${COUNTY}.log s3://$S3_BUCKET/ci/logs/${COUNTY}-failed-$(date +%Y%m%d-%H%M%S).log || true
+            exit 1
+          fi
+          
+          # Wait for SSH to be ready (key already at ~/.ssh/mapserver-ec2.pem)
+          echo "⏳ Waiting for SSH access..."
+          for i in {1..30}; do
+            if ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+                ubuntu@$WORKER_IP 'echo ready' 2>/dev/null; then
+              echo "✅ SSH ready"
+              break
+            fi
+            sleep 10
+          done
+          
+          # Wait for worker to finish (poll every 2 min, max 2 hours)
+          echo "⏳ Waiting for worker to complete generation..."
+          MAX_ITERATIONS=60
+          ITERATION=0
+          
+          while [ $ITERATION -lt $MAX_ITERATIONS ]; do
+            ITERATION=$((ITERATION + 1))
+            
+            # Check if worker still exists
+            WORKER_STATE=$(aws ec2 describe-instances \
+              --instance-ids "$WORKER_INSTANCE_ID" \
+              --query 'Reservations[0].Instances[0].State.Name' \
+              --output text 2>/dev/null || echo "terminated")
+            
+            if [ "$WORKER_STATE" = "terminated" ]; then
+              echo "✅ Worker terminated (generation complete or failed)"
+              break
+            fi
+            
+            # Collect progress stats via SSH
+            echo "[$ITERATION/$MAX_ITERATIONS] Worker state: $WORKER_STATE"
+            
+            PROGRESS=$(ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$WORKER_IP '
+              df -h /data | tail -1 | awk '"'"'{printf "   💾 Disk: %s (%s full)\n", $3, $5}'"'"'
+              uptime | awk -F"load average:" '"'"'{print "   🖥️  CPU load:" $2}'"'"' | cut -d, -f1
+              echo "   📦 Output: $(find /data/output -name "*.mbtiles" 2>/dev/null | wc -l) mbtiles ($(du -sh /data/output 2>/dev/null | cut -f1 || echo 0))"
+              if [ -f /var/log/hillshade-gen.log ]; then
+                echo "   📋 Latest: $(tail -1 /var/log/hillshade-gen.log 2>/dev/null | cut -c1-80)"
+              fi
+              [ -f /data/output/DONE ] && echo "DONE_FOUND"
+            ' 2>/dev/null || echo "   (SSH failed)")
+            
+            echo "$PROGRESS"
+            
+            # Break if DONE marker found
+            if echo "$PROGRESS" | grep -q "DONE_FOUND"; then
+              echo "🎉 Generation complete!"
+              break
+            fi
+            
+            sleep 120
+          done
+          
+          if [ $ITERATION -ge $MAX_ITERATIONS ]; then
+            echo "⚠️  Timeout after 2 hours, terminating worker"
+            aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" || true
+          fi
+          
+          # Download tiles from worker via SCP
+          echo "📥 Downloading tiles from worker..."
+          mkdir -p /tmp/tiles
+          
+          # List what's on the worker
+          ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no ubuntu@$WORKER_IP \
+            'find /data/output -name "*.mbtiles" -exec ls -lh {} \;' 2>/dev/null || true
+          
+          # SCP all mbtiles
+          scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
+            "ubuntu@$WORKER_IP:/data/output/${COUNTY}/*/*.mbtiles" /tmp/tiles/ 2>&1 || true
+          
+          TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
+          if [ "$TILE_COUNT" -eq 0 ]; then
+            echo "❌ No tiles found on worker"
+            # Try broader search
+            scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
+              "ubuntu@$WORKER_IP:/data/output/*.mbtiles" /tmp/tiles/ 2>&1 || true
+            TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
+          fi
+          
+          if [ "$TILE_COUNT" -eq 0 ]; then
+            echo "❌ Still no tiles found. Checking worker output structure:"
+            ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no ubuntu@$WORKER_IP \
+              'find /data/output -type f 2>/dev/null | head -30' || true
+            aws s3 cp /tmp/generate-${COUNTY}.log s3://$S3_BUCKET/ci/logs/${COUNTY}-failed-$(date +%Y%m%d-%H%M%S).log || true
+            exit 1
+          fi
+          
+          echo "✅ Downloaded $TILE_COUNT tile(s):"
+          ls -lh /tmp/tiles/
+          
+          # Upload success log to S3
+          aws s3 cp /tmp/generate-${COUNTY}.log \
+            s3://$S3_BUCKET/ci/logs/${COUNTY}-success-$(date +%Y%m%d-%H%M%S).log
+          
+          echo "✅ Generation complete for $COUNTY"
+      
+      - name: Upload to tile server
+        if: success()
+        env:
+          TILE_SERVER_SSH: ${{ secrets.TILE_SERVER_SSH }}
+        run: |
+          # Setup SSH key
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TILE_SERVER_SSH_KEY }}" > ~/.ssh/tile-server.pem
+          chmod 600 ~/.ssh/tile-server.pem
+          
+          # Upload each tile
+          for mbtiles in /tmp/tiles/*.mbtiles; do
+            if [ -f "$mbtiles" ]; then
+              basename=$(basename "$mbtiles")
+              echo "Uploading $basename..."
+              scp -i ~/.ssh/tile-server.pem -o StrictHostKeyChecking=no \
+                "$mbtiles" "$TILE_SERVER_SSH:/data/tiles/"
+            fi
+          done
+          
+          # Restart mbtileserver
+          ssh -i ~/.ssh/tile-server.pem -o StrictHostKeyChecking=no \
+            "$TILE_SERVER_SSH" 'cd /data && sudo docker compose restart mbtileserver'
+          
+          echo "✅ Tiles deployed to tile server"
+      
+      - name: Mark as completed
+        if: success()
+        run: |
+          python3 << 'EOF'
+          import yaml, os
+          
+          county = os.environ['COUNTY']
+          styles = os.environ['STYLES'].split(',')
+          exags = os.environ['EXAGGERATIONS'].split(',')
+          
+          with open('requests.yaml') as f:
+              data = yaml.safe_load(f)
+          
+          for req in data['requests']:
+              if req['county'] == county and req.get('status') == 'pending':
+                  req['status'] = 'completed'
+                  
+                  # Generate preview URLs
+                  previews = []
+                  for style in styles:
+                      for exag in exags:
+                          tile_name = f"{county}-dtm-{style}-{exag}x-tms"
+                          url = f"https://exaggeratedrelief.com/services/{tile_name}/map"
+                          previews.append(url)
+                  
+                  req['deployed'] = previews[0] if len(previews) == 1 else previews
+                  req['generated_at'] = os.environ.get('GITHUB_RUN_STARTED_AT', '')
+          
+          with open('requests.yaml', 'w') as f:
+              yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+          EOF
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add requests.yaml
+          git commit -m "Mark ${{ matrix.request.county }} as completed [skip ci]" || true
+          git push || true
+        env:
+          COUNTY: ${{ matrix.request.county }}
+          STYLES: ${{ matrix.request.styles }}
+          EXAGGERATIONS: ${{ matrix.request.exaggerations }}
+          GITHUB_RUN_STARTED_AT: ${{ github.event.head_commit.timestamp }}
