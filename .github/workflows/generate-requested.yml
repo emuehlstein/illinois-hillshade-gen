@@ -156,15 +156,23 @@ jobs:
             # Collect progress stats via SSH
             echo "[$ITERATION/$MAX_ITERATIONS] Worker state: $WORKER_STATE"
             
-            ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$WORKER_IP '
+            PROGRESS=$(ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$WORKER_IP '
               df -h /data | tail -1 | awk '"'"'{printf "   💾 Disk: %s (%s full)\n", $3, $5}'"'"'
               uptime | awk -F"load average:" '"'"'{print "   🖥️  CPU load:" $2}'"'"' | cut -d, -f1
               echo "   📦 Output: $(find /data/output -name "*.mbtiles" 2>/dev/null | wc -l) mbtiles ($(du -sh /data/output 2>/dev/null | cut -f1 || echo 0))"
               if [ -f /var/log/hillshade-gen.log ]; then
                 echo "   📋 Latest: $(tail -1 /var/log/hillshade-gen.log 2>/dev/null | cut -c1-80)"
               fi
-              [ -f /data/output/DONE ] && echo "   🎉 DONE marker found!"
-            ' 2>/dev/null || echo "   (SSH failed)"
+              [ -f /data/output/DONE ] && echo "DONE_FOUND"
+            ' 2>/dev/null || echo "   (SSH failed)")
+            
+            echo "$PROGRESS"
+            
+            # Break if DONE marker found
+            if echo "$PROGRESS" | grep -q "DONE_FOUND"; then
+              echo "🎉 Generation complete!"
+              break
+            fi
             
             sleep 120
           done
@@ -174,26 +182,36 @@ jobs:
             aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" || true
           fi
           
-          # Check S3 for results
-          echo "📥 Checking S3 for results..."
-          aws s3 ls s3://$S3_BUCKET/${COUNTY}/mbtiles/ || {
-            echo "❌ No tiles found in S3"
-            aws s3 cp /tmp/generate-${COUNTY}.log s3://$S3_BUCKET/ci/logs/${COUNTY}-failed-$(date +%Y%m%d-%H%M%S).log || true
-            exit 1
-          }
-          
-          # Download tiles
+          # Download tiles from worker via SCP
+          echo "📥 Downloading tiles from worker..."
           mkdir -p /tmp/tiles
-          aws s3 sync s3://$S3_BUCKET/${COUNTY}/mbtiles/ /tmp/tiles/ \
-            --exclude "*" --include "*.mbtiles"
+          
+          # List what's on the worker
+          ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no ubuntu@$WORKER_IP \
+            'find /data/output -name "*.mbtiles" -exec ls -lh {} \;' 2>/dev/null || true
+          
+          # SCP all mbtiles
+          scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
+            "ubuntu@$WORKER_IP:/data/output/${COUNTY}/*/*.mbtiles" /tmp/tiles/ 2>&1 || true
           
           TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
           if [ "$TILE_COUNT" -eq 0 ]; then
-            echo "❌ Downloaded 0 tiles"
+            echo "❌ No tiles found on worker"
+            # Try broader search
+            scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
+              "ubuntu@$WORKER_IP:/data/output/*.mbtiles" /tmp/tiles/ 2>&1 || true
+            TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
+          fi
+          
+          if [ "$TILE_COUNT" -eq 0 ]; then
+            echo "❌ Still no tiles found. Checking worker output structure:"
+            ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no ubuntu@$WORKER_IP \
+              'find /data/output -type f 2>/dev/null | head -30' || true
+            aws s3 cp /tmp/generate-${COUNTY}.log s3://$S3_BUCKET/ci/logs/${COUNTY}-failed-$(date +%Y%m%d-%H%M%S).log || true
             exit 1
           fi
           
-          echo "✅ Downloaded $TILE_COUNT tile(s) from S3:"
+          echo "✅ Downloaded $TILE_COUNT tile(s):"
           ls -lh /tmp/tiles/
           
           # Upload success log to S3
