@@ -17,7 +17,7 @@ from typing import Optional
 from pathlib import Path
 from rich.console import Console
 
-from . import download, hillshade, tile, counties, viewer, layers as layers_mod
+from . import download, hillshade, tile, counties, viewer, layers as layers_mod, reproject as reproject_mod
 from .hillshade import ShadingMode
 from .auto_exag import compute_auto_exaggeration
 from . import themes as themes_mod
@@ -199,7 +199,10 @@ def run(
         if not json_out:
             console.print("[bold]Step 2/5:[/bold] Reprojecting to WGS84...")
         with console.status("[green]Reprojecting...") if not json_out else _nullctx():
-            reproject_to_4326(dem_path, dem_4326)
+            reproject_mod.reproject_to_4326(
+                dem_path, dem_4326,
+                cache_dir=cache_dir,
+            )
         if not json_out:
             console.print(f"[green]✓[/green] Reprojected: {dem_4326}")
     else:
@@ -342,6 +345,7 @@ def download_cmd(
     dem: str = typer.Option("dtm", "--dem", "-d", help="DEM type: dtm or dsm"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output path"),
     source_zip: Optional[Path] = typer.Option(None, "--source-zip", help="Use a local ZIP instead of downloading from ISGS."),
+    cache_dir: Optional[Path] = typer.Option(None, "--cache-dir", help="Directory to check/store cached DEMs. Skips download if cached."),
 ):
     """Download (or extract) elevation data for a county (full 1m resolution)."""
     county_info = counties.get_county(county)
@@ -359,8 +363,37 @@ def download_cmd(
         download.extract_local_zip(source_zip, output_path)
     else:
         console.print(f"[bold]Downloading {county_info['name']} {dem.upper()}...[/bold]")
-        download.download_county(county, dem, output_path)
+        download.download_county(county, dem, output_path, cache_dir=cache_dir)
     console.print(f"[green]✓[/green] Saved: {output_path}")
+
+
+@app.command("reproject")
+def reproject_cmd(
+    input_dem: Path = typer.Argument(..., help="Input DEM GeoTIFF (any CRS)"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output reprojected GeoTIFF. Defaults to {stem}_4326.tif"),
+    cache_dir: Optional[Path] = typer.Option(None, "--cache-dir", help="Directory to check/store cached reprojections."),
+    force: bool = typer.Option(False, "--force", help="Reproject even if cached version exists"),
+):
+    """Reproject a DEM to EPSG:4326 (WGS84) for web mapping. Atomic writes."""
+    if not input_dem.exists():
+        console.print(f"[red]Input not found: {input_dem}[/red]")
+        raise typer.Exit(1)
+
+    output_path = output or input_dem.with_name(f"{input_dem.stem}_4326.tif")
+
+    console.print(f"[bold]Reprojecting to EPSG:4326...[/bold]")
+    console.print(f"   Input:  {input_dem}")
+    console.print(f"   Output: {output_path}")
+    if cache_dir:
+        console.print(f"   Cache:  {cache_dir}")
+
+    with console.status("[green]Reprojecting..."):
+        reproject_mod.reproject_to_4326(
+            input_dem, output_path,
+            cache_dir=cache_dir,
+            force=force,
+        )
+    console.print(f"[green]✓[/green] Done: {output_path}")
 
 
 @app.command("hillshade")
