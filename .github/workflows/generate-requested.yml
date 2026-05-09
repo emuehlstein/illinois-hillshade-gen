@@ -294,6 +294,115 @@ jobs:
             "$TILE_SERVER_SSH" 'cd /data && sudo docker compose restart mbtileserver'
           
           echo "✅ Tiles deployed to tile server"
+
+      - name: Convert to PMTiles and publish to exaggeratedrelief.com
+        if: success()
+        env:
+          COUNTY: ${{ matrix.request.county }}
+          STYLES: ${{ matrix.request.styles }}
+          EXAGGERATIONS: ${{ matrix.request.exaggerations }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+        run: |
+          # Install pmtiles CLI
+          wget -q https://github.com/protomaps/go-pmtiles/releases/download/v3.2.1/go-pmtiles_3.2.1_Linux_arm64.tar.gz -O /tmp/pmtiles.tar.gz || \
+          wget -q https://github.com/protomaps/go-pmtiles/releases/download/v3.2.1/go-pmtiles_3.2.1_Linux_x86_64.tar.gz -O /tmp/pmtiles.tar.gz
+          tar -xzf /tmp/pmtiles.tar.gz -C /usr/local/bin/ pmtiles 2>/dev/null || \
+          tar -xzf /tmp/pmtiles.tar.gz -C /usr/local/bin/ 2>/dev/null
+          chmod +x /usr/local/bin/pmtiles
+          
+          # Convert each mbtiles to pmtiles
+          mkdir -p /tmp/pmtiles
+          for mbtiles in /tmp/tiles/*.mbtiles; do
+            if [ -f "$mbtiles" ]; then
+              base=$(basename "$mbtiles" .mbtiles)
+              pmname="${COUNTY}-${STYLES}-${EXAGGERATIONS}x.pmtiles"
+              echo "Converting $base -> $pmname"
+              pmtiles convert "$mbtiles" "/tmp/pmtiles/$pmname"
+            fi
+          done
+          
+          # Upload pmtiles to exaggeratedrelief S3 bucket
+          for pm in /tmp/pmtiles/*.pmtiles; do
+            if [ -f "$pm" ]; then
+              echo "Uploading $(basename $pm) to S3..."
+              aws s3 cp "$pm" "s3://exaggeratedrelief/tiles/$(basename $pm)" \
+                --content-type "application/octet-stream"
+            fi
+          done
+          
+          echo "✅ PMTiles published to exaggeratedrelief.com"
+
+      - name: Update catalog.json
+        if: success()
+        env:
+          COUNTY: ${{ matrix.request.county }}
+          STYLES: ${{ matrix.request.styles }}
+          EXAGGERATIONS: ${{ matrix.request.exaggerations }}
+          DEM: ${{ matrix.request.dem }}
+        run: |
+          pip install pyyaml
+          # Download current catalog, add new tile entry, re-upload
+          aws s3 cp s3://exaggeratedrelief/catalog.json /tmp/catalog.json || echo '{}' > /tmp/catalog.json
+          
+          python3 << 'EOF'
+          import json, os, glob
+          
+          county = os.environ['COUNTY']
+          styles = os.environ['STYLES']
+          exags = os.environ['EXAGGERATIONS']
+          dem = os.environ.get('DEM', 'dtm')
+          
+          with open('/tmp/catalog.json') as f:
+              catalog = json.load(f)
+          
+          if county not in catalog.get('counties', {}):
+              print(f"Warning: {county} not in catalog, skipping")
+              exit(0)
+          
+          # Get pmtiles file size
+          pmname = f"{county}-{styles}-{exags}x.pmtiles"
+          pmpath = f"/tmp/pmtiles/{pmname}"
+          size_mb = 0
+          if os.path.exists(pmpath):
+              size_mb = int(os.path.getsize(pmpath) / 1024 / 1024)
+          
+          tile_entry = {
+              "id": f"{county}-{styles}-{exags}x",
+              "theme": styles,
+              "dem": dem,
+              "exaggeration": exags,
+              "zoom": [10, 16],
+              "pmtiles": f"tiles/{pmname}",
+              "pmtiles_size_mb": size_mb,
+              "generated_at": os.environ.get('GITHUB_RUN_STARTED_AT', ''),
+          }
+          
+          # Remove existing entry with same id if present
+          tiles = catalog['counties'][county].get('tiles', [])
+          tiles = [t for t in tiles if t.get('id') != tile_entry['id']]
+          tiles.append(tile_entry)
+          catalog['counties'][county]['tiles'] = tiles
+          
+          with open('/tmp/catalog.json', 'w') as f:
+              json.dump(catalog, f, indent=2)
+          
+          total = sum(len(c.get('tiles', [])) for c in catalog['counties'].values())
+          print(f"Catalog updated: {county} now has {len(tiles)} tile(s), {total} total")
+          EOF
+          
+          aws s3 cp /tmp/catalog.json s3://exaggeratedrelief/catalog.json \
+            --content-type "application/json" --cache-control "max-age=60"
+          
+          # Invalidate CloudFront cache for catalog
+          DIST_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?Aliases.Items[0]=='exaggeratedrelief.com'].Id" \
+            --output text 2>/dev/null || echo "")
+          if [ -n "$DIST_ID" ]; then
+            aws cloudfront create-invalidation --distribution-id "$DIST_ID" \
+              --paths "/catalog.json" > /dev/null 2>&1 || true
+          fi
+          
+          echo "✅ Catalog updated on exaggeratedrelief.com"
       
       - name: Mark as completed
         if: success()

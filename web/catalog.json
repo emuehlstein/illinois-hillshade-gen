@@ -1996,7 +1996,21 @@
           "size_gb": 10.6
         }
       },
-      "tiles": []
+      "tiles": [
+        {
+          "id": "putnam-atak-dark-9x",
+          "theme": "atak-dark",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            10,
+            16
+          ],
+          "pmtiles": "tiles/putnam-atak-dark-9x.pmtiles",
+          "pmtiles_size_mb": 260,
+          "generated_at": "2026-05-08T04:00:00Z"
+        }
+      ]
     },
     "randolph": {
       "name": "Randolph",
