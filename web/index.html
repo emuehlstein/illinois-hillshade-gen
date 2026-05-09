@@ -347,51 +347,9 @@
         }
 
         /* ── Preview map ── */
-        .preview-section {
-            border-top: 1px solid #30363d;
-            background: #0d1117;
-            flex-shrink: 0;
-            transition: height 0.3s ease;
-            overflow: hidden;
-        }
-        .preview-section.collapsed { height: 0; }
-        .preview-section.expanded { height: 320px; }
-        .preview-section.fullscreen {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            height: 100vh;
-            z-index: 1000;
-        }
-        .preview-section.fullscreen #preview-map {
-            height: calc(100vh - 33px);
-        }
-
-        .preview-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 16px;
-            background: #161b22;
-            border-bottom: 1px solid #30363d;
-        }
-        .preview-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: #8b949e;
-        }
-        .preview-close {
-            background: none;
-            border: none;
-            color: #8b949e;
-            cursor: pointer;
-            font-size: 16px;
-            padding: 0 4px;
-            line-height: 1;
-        }
-        .preview-close:hover { color: #e6edf3; }
-        #preview-map {
-            width: 100%;
-            height: calc(100% - 33px);
+        .btn-active {
+            background: #da3633 !important;
+            border-color: #f85149 !important;
         }
 
         /* ── Stats bar ── */
@@ -566,17 +524,7 @@
         </div>
     </div>
 
-    <!-- Preview map (collapsed by default) -->
-    <div class="preview-section collapsed" id="preview-section">
-        <div class="preview-header">
-            <span class="preview-title" id="preview-title">Preview</span>
-            <div>
-                <button class="preview-close" id="preview-fullscreen" title="Toggle fullscreen">⛶</button>
-                <button class="preview-close" id="preview-close" title="Close preview">✕</button>
-            </div>
-        </div>
-        <div id="preview-map"></div>
-    </div>
+
 
     <!-- Stats bar -->
     <div class="stats-bar" id="stats-bar">

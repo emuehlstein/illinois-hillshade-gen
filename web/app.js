@@ -8,10 +8,9 @@ const GENERATE_URL_DEFAULT =
 // ── State ──────────────────────────────────────────────────────────────────
 let catalog       = null;
 let selectorMap   = null;
-let previewMap    = null;
-let previewActive = false;
-let previewLayerId = null;
-let previewSourceId = null;
+let overlayActive = false;
+let overlayLayerId = null;
+let overlaySourceId = null;
 
 const state = {
   county: null,   // ilhmp_id string, e.g. "cook"
@@ -248,8 +247,8 @@ function selectCounty(countyId, featureId) {
   renderStatusCard();
   updateAvailabilityDots();
 
-  // Close any open preview when switching county
-  closePreview();
+  // Remove tile overlay when switching county
+  removeOverlay();
 }
 
 function getFeatureIdForCounty(countyId) {
@@ -391,7 +390,7 @@ function renderStatusCard() {
         <div class="meta-row"><span class="meta-key">Source</span><span class="meta-val">${sourceStr}</span></div>
       </div>
       <div class="action-row">
-        <button class="btn btn-primary" id="btn-preview" onclick="openPreview()">👁 Preview</button>
+        <button class="btn btn-primary" id="btn-preview" onclick="toggleOverlay()">👁 Show on Map</button>
         <a class="btn btn-secondary" href="${pmtilesUrl}" download>⬇ Download</a>
       </div>
     `;
@@ -442,7 +441,7 @@ function buildGenerateUrl(countyName) {
 }
 
 // ── Preview map ────────────────────────────────────────────────────────────
-function openPreview() {
+function showOverlay() {
   const tile = findMatchingTile(state.county) || findBestTile(state.county);
   if (!tile) return;
 
@@ -528,32 +527,14 @@ function removePreviewLayer() {
 }
 
 function closePreview() {
-  const section = document.getElementById('preview-section');
-  section.classList.remove('expanded', 'fullscreen');
-  section.classList.add('collapsed');
-  document.getElementById('preview-fullscreen').textContent = '\u26F6';
-  previewActive = false;
-  removePreviewLayer();
+  removeOverlay();
+  // Zoom back to state view
+  selectorMap.flyTo({ center: IL_CENTER, zoom: IL_ZOOM, duration: 800 });
 }
 
-document.getElementById('preview-close').addEventListener('click', closePreview);
-document.getElementById('preview-fullscreen').addEventListener('click', toggleFullscreen);
+// Preview close handled by status card button
 
-function toggleFullscreen() {
-  const section = document.getElementById('preview-section');
-  const btn = document.getElementById('preview-fullscreen');
-  if (section.classList.contains('fullscreen')) {
-    section.classList.remove('fullscreen');
-    section.classList.add('expanded');
-    btn.textContent = '\u26F6';
-  } else {
-    section.classList.remove('expanded');
-    section.classList.add('fullscreen');
-    btn.textContent = '\u2716';
-  }
-  // MapLibre needs a resize after container changes
-  if (previewMap) setTimeout(() => previewMap.resize(), 100);
-}
+
 
 function getCountyCenter() {
   if (!state.county || !catalog) return IL_CENTER;
