@@ -4,3 +4,4 @@ theme: simmon-light
 exaggeration: auto
 zoom: 10-19
 status: pending
+retry: true
