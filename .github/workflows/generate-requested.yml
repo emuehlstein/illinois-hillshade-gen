@@ -97,8 +97,6 @@ jobs:
           WORKER_INSTANCE_TYPE: c7g.2xlarge
           DEBUG_KEEP_ALIVE: ${{ github.event.inputs.debug || 'false' }}
         run: |
-          set -x
-          
           echo "🗺️  Generating hillshades for $COUNTY"
           echo "   DEM: $DEM"
           echo "   Styles: $STYLES"
