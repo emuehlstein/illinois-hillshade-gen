@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, v2-simmon]
     paths:
-      - 'requests.yaml'
+      - 'requests/*.yaml'
   workflow_dispatch:
     inputs:
       county:
@@ -37,30 +37,30 @@ jobs:
         run: |
           pip install pyyaml
           python3 << 'EOF'
-          import yaml, json, os
+          import yaml, json, os, glob
           
-          with open('requests.yaml') as f:
-              data = yaml.safe_load(f)
-          
-          pending = [
-              {
+          pending = []
+          for path in sorted(glob.glob('requests/*.yaml')):
+              with open(path) as f:
+                  r = yaml.safe_load(f)
+              if not r or r.get('status') != 'pending':
+                  continue
+              pending.append({
                   'county': r['county'],
                   'dem': r.get('dem', 'dtm'),
-                  'styles': ','.join(r.get('styles', ['dark'])),
-                  'exaggerations': ','.join(str(e) for e in r.get('exaggerations', [9])),
+                  'styles': r.get('theme', ','.join(r.get('styles', ['dark']))),
+                  'exaggerations': str(r.get('exaggeration', ','.join(str(e) for e in r.get('exaggerations', [9])))),
                   'zoom': r.get('zoom', '10-16'),
                   'debug': str(r.get('debug', False)).lower(),
-              }
-              for r in (data.get('requests', []) if isinstance(data, dict) else data or [])
-              if r.get('status') == 'pending'
-          ]
+                  'request_file': path,
+              })
           
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"counties={json.dumps(pending)}\n")
           
           print(f"Found {len(pending)} pending request(s):")
           for p in pending:
-              print(f"  - {p['county']}: {p['styles']} @ {p['exaggerations']}x")
+              print(f"  - {p['county']}: {p['styles']} @ {p['exaggerations']}x ({p['request_file']})")
           EOF
 
   generate:
@@ -299,41 +299,41 @@ jobs:
         if: success()
         run: |
           python3 << 'EOF'
-          import yaml, os
+          import yaml, os, glob
           
           county = os.environ['COUNTY']
-          styles = os.environ['STYLES'].split(',')
-          exags = os.environ['EXAGGERATIONS'].split(',')
+          request_file = os.environ.get('REQUEST_FILE', '')
           
-          with open('requests.yaml') as f:
-              data = yaml.safe_load(f)
+          # Find the request file
+          if request_file and os.path.exists(request_file):
+              target = request_file
+          else:
+              # Fallback: find by county name
+              candidates = glob.glob(f'requests/{county}-*.yaml')
+              target = candidates[0] if candidates else None
           
-          for req in data['requests']:
-              if req['county'] == county and req.get('status') == 'pending':
-                  req['status'] = 'completed'
-                  
-                  # Generate preview URLs
-                  previews = []
-                  for style in styles:
-                      for exag in exags:
-                          tile_name = f"{county}-dtm-{style}-{exag}x-tms"
-                          url = f"https://exaggeratedrelief.com/services/{tile_name}/map"
-                          previews.append(url)
-                  
-                  req['deployed'] = previews[0] if len(previews) == 1 else previews
-                  req['generated_at'] = os.environ.get('GITHUB_RUN_STARTED_AT', '')
-          
-          with open('requests.yaml', 'w') as f:
-              yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+          if target:
+              with open(target) as f:
+                  data = yaml.safe_load(f)
+              data['status'] = 'completed'
+              data['generated_at'] = os.environ.get('GITHUB_RUN_STARTED_AT', '')
+              data['github_run'] = os.environ.get('GITHUB_RUN_URL', '')
+              with open(target, 'w') as f:
+                  yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+              print(f"Marked {target} as completed")
+          else:
+              print(f"Warning: could not find request file for {county}")
           EOF
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add requests.yaml
+          git add requests/
           git commit -m "Mark ${{ matrix.request.county }} as completed [skip ci]" || true
           git push || true
         env:
           COUNTY: ${{ matrix.request.county }}
           STYLES: ${{ matrix.request.styles }}
           EXAGGERATIONS: ${{ matrix.request.exaggerations }}
+          REQUEST_FILE: ${{ matrix.request.request_file }}
           GITHUB_RUN_STARTED_AT: ${{ github.event.head_commit.timestamp }}
+          GITHUB_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

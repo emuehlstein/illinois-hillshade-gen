@@ -359,7 +359,7 @@ function renderStatusCard() {
     `;
   } else {
     // Not generated — show generate button
-    const generateUrl = buildGenerateUrl(countyName);
+    const { url: generateUrl, filename } = buildGenerateUrl(countyName);
     const demSrc = countyData.sources?.[state.dem];
     const demYear = demSrc?.year || '?';
     const demSize = demSrc?.size_gb ? `${demSrc.size_gb} GB DEM` : '';
@@ -377,9 +377,8 @@ function renderStatusCard() {
         <a class="btn btn-green" href="${generateUrl}" target="_blank">🔧 Generate via PR</a>
       </div>
       <div class="generate-hint">
-        Request copied to clipboard — paste it at the end of
-        <code>requests.yaml</code> and submit a PR.<br/>
-        Multiple requests can be appended to the same file.<br/>
+        Creates <code>requests/${filename}</code> and opens a PR.<br/>
+        Each request is a separate file — no merge conflicts.<br/>
         Est. time: ~30 min · Est. cost: ~$0.07
       </div>
     `;
@@ -387,23 +386,21 @@ function renderStatusCard() {
 }
 
 function buildGenerateUrl(countyName) {
-  // Build a YAML snippet the user can append to requests.yaml
-  const entry = [
-    `  - county: ${state.county}`,
-    `    dem: ${state.dem}`,
-    `    styles:`,
-    `      - ${state.theme}`,
-    `    exaggerations:`,
-    `      - ${state.exag}`,
-    `    zoom: "${state.zoomMin}-${state.zoomMax}"`,
-    `    status: pending`,
+  // Build a unique filename from the config
+  const filename = `${state.county}-${state.dem}-${state.theme}-${state.exag}x-z${state.zoomMin}-${state.zoomMax}.yaml`;
+
+  const yaml = [
+    `county: ${state.county}`,
+    `dem: ${state.dem}`,
+    `theme: ${state.theme}`,
+    `exaggeration: ${state.exag}`,
+    `zoom: "${state.zoomMin}-${state.zoomMax}"`,
+    `status: pending`,
   ].join('\n');
 
-  // Copy snippet to clipboard and open the edit page
-  try { navigator.clipboard.writeText(entry); } catch (_) {}
-
-  // GitHub edit URL — user appends their request to the existing file
-  return `https://github.com/emuehlstein/illinois-hillshade-gen/edit/main/requests.yaml`;
+  // GitHub new-file URL: creates requests/<filename> with pre-filled content
+  const url = `https://github.com/emuehlstein/illinois-hillshade-gen/new/main/requests?filename=${encodeURIComponent(filename)}&value=${encodeURIComponent(yaml)}`;
+  return { url, filename };
 }
 
 // ── Preview map ────────────────────────────────────────────────────────────
