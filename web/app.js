@@ -529,13 +529,31 @@ function removePreviewLayer() {
 
 function closePreview() {
   const section = document.getElementById('preview-section');
-  section.classList.remove('expanded');
+  section.classList.remove('expanded', 'fullscreen');
   section.classList.add('collapsed');
+  document.getElementById('preview-fullscreen').textContent = '\u26F6';
   previewActive = false;
   removePreviewLayer();
 }
 
 document.getElementById('preview-close').addEventListener('click', closePreview);
+document.getElementById('preview-fullscreen').addEventListener('click', toggleFullscreen);
+
+function toggleFullscreen() {
+  const section = document.getElementById('preview-section');
+  const btn = document.getElementById('preview-fullscreen');
+  if (section.classList.contains('fullscreen')) {
+    section.classList.remove('fullscreen');
+    section.classList.add('expanded');
+    btn.textContent = '\u26F6';
+  } else {
+    section.classList.remove('expanded');
+    section.classList.add('fullscreen');
+    btn.textContent = '\u2716';
+  }
+  // MapLibre needs a resize after container changes
+  if (previewMap) setTimeout(() => previewMap.resize(), 100);
+}
 
 function getCountyCenter() {
   if (!state.county || !catalog) return IL_CENTER;

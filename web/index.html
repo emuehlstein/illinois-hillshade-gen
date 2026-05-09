@@ -356,6 +356,15 @@
         }
         .preview-section.collapsed { height: 0; }
         .preview-section.expanded { height: 320px; }
+        .preview-section.fullscreen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            height: 100vh;
+            z-index: 1000;
+        }
+        .preview-section.fullscreen #preview-map {
+            height: calc(100vh - 33px);
+        }
 
         .preview-header {
             display: flex;
@@ -561,7 +570,10 @@
     <div class="preview-section collapsed" id="preview-section">
         <div class="preview-header">
             <span class="preview-title" id="preview-title">Preview</span>
-            <button class="preview-close" id="preview-close" title="Close preview">✕</button>
+            <div>
+                <button class="preview-close" id="preview-fullscreen" title="Toggle fullscreen">⛶</button>
+                <button class="preview-close" id="preview-close" title="Close preview">✕</button>
+            </div>
         </div>
         <div id="preview-map"></div>
     </div>
