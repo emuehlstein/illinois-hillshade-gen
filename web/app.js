@@ -441,6 +441,31 @@ function buildGenerateUrl(countyName) {
 }
 
 // ── Preview map ────────────────────────────────────────────────────────────
+function toggleOverlay() {
+  if (overlayActive) {
+    removeOverlay();
+    const btn = document.getElementById('btn-preview');
+    if (btn) { btn.textContent = '👁 Show on Map'; btn.classList.remove('btn-active'); }
+  } else {
+    showOverlay();
+    const btn = document.getElementById('btn-preview');
+    if (btn) { btn.textContent = '✕ Hide Map'; btn.classList.add('btn-active'); }
+  }
+}
+
+function removeOverlay() {
+  if (!selectorMap) return;
+  if (overlayLayerId && selectorMap.getLayer(overlayLayerId)) {
+    selectorMap.removeLayer(overlayLayerId);
+  }
+  if (overlaySourceId && selectorMap.getSource(overlaySourceId)) {
+    selectorMap.removeSource(overlaySourceId);
+  }
+  overlayLayerId  = null;
+  overlaySourceId = null;
+  overlayActive = false;
+}
+
 function showOverlay() {
   const tile = findMatchingTile(state.county) || findBestTile(state.county);
   if (!tile) return;
