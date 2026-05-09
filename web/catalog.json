@@ -828,7 +828,22 @@
           "size_gb": 26.7
         }
       },
-      "tiles": []
+      "tiles": [
+        {
+          "id": "lake-simmon-9x-z10-16",
+          "theme": "simmon",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            10,
+            16
+          ],
+          "pmtiles": "tiles/lake-simmon-9x.pmtiles",
+          "pmtiles_size_mb": 956,
+          "tile_count": 9838,
+          "generated_at": "2026-05-09T00:22:00Z"
+        }
+      ]
     },
     "lasalle": {
       "name": "LaSalle",
