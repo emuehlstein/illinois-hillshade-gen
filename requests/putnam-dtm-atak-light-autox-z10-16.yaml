@@ -2,6 +2,5 @@ county: putnam
 dem: dtm
 theme: atak-light
 exaggeration: auto
-zoom: "10-11"
+zoom: 10-11
 status: pending
-debug: true
