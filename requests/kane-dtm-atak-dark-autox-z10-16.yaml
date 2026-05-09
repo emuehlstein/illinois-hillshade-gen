@@ -2,5 +2,7 @@ county: kane
 dem: dtm
 theme: atak-dark
 exaggeration: auto
-zoom: "10-17"
-status: pending
+zoom: 10-17
+status: completed
+generated_at: '2026-05-09T08:05:07-05:00'
+github_run: https://github.com/emuehlstein/illinois-hillshade-gen/actions/runs/25601848443
