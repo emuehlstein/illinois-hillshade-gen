@@ -468,96 +468,39 @@ function removeOverlay() {
 
 function showOverlay() {
   const tile = findMatchingTile(state.county) || findBestTile(state.county);
-  if (!tile) return;
+  if (!tile || !selectorMap) return;
 
-  const section = document.getElementById('preview-section');
-  const titleEl = document.getElementById('preview-title');
-  const countyName = catalog.counties[state.county]?.name || capitalize(state.county);
-
-  titleEl.textContent = `Preview — ${countyName} · ${tile.theme} · ${tile.exaggeration}× · z${tile.zoom?.[0]}–${tile.zoom?.[1]}`;
+  removeOverlay();
 
   const pmtilesUrl = `pmtiles://${TILES_BASE}/${tile.pmtiles}`;
+  overlaySourceId = `overlay-${tile.id}`;
+  overlayLayerId  = `overlay-layer-${tile.id}`;
 
-  section.classList.remove('collapsed');
-  section.classList.add('expanded');
-  previewActive = true;
-
-  if (!previewMap) {
-    previewMap = new maplibregl.Map({
-      container: 'preview-map',
-      style: {
-        version: 8,
-        sources: {},
-        layers: [{
-          id: 'background',
-          type: 'background',
-          paint: { 'background-color': '#0d1117' },
-        }],
-      },
-      center: getCountyCenter(),
-      zoom: state.zoomMin || 10,
-      attributionControl: false,
-    });
-
-    previewMap.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-
-    previewMap.on('load', () => {
-      addPreviewLayer(tile, pmtilesUrl);
-    });
-  } else {
-    // Map already exists — swap layer
-    removePreviewLayer();
-    if (previewMap.loaded()) {
-      addPreviewLayer(tile, pmtilesUrl);
-    } else {
-      previewMap.once('idle', () => addPreviewLayer(tile, pmtilesUrl));
-    }
-    // Fly to county center
-    const center = getCountyCenter();
-    if (center) previewMap.flyTo({ center, zoom: state.zoomMin || 10, duration: 800 });
-  }
-}
-
-function addPreviewLayer(tile, pmtilesUrl) {
-  previewSourceId = `preview-${tile.id}`;
-  previewLayerId  = `preview-layer-${tile.id}`;
-
-  if (!previewMap.getSource(previewSourceId)) {
-    previewMap.addSource(previewSourceId, {
+  if (!selectorMap.getSource(overlaySourceId)) {
+    selectorMap.addSource(overlaySourceId, {
       type: 'raster',
       url: pmtilesUrl,
       tileSize: 256,
     });
   }
-  if (!previewMap.getLayer(previewLayerId)) {
-    previewMap.addLayer({
-      id: previewLayerId,
+  if (!selectorMap.getLayer(overlayLayerId)) {
+    // Insert below county outlines so borders stay visible
+    const beforeLayer = selectorMap.getLayer('counties-outline') ? 'counties-outline' : undefined;
+    selectorMap.addLayer({
+      id: overlayLayerId,
       type: 'raster',
-      source: previewSourceId,
-      paint: { 'raster-opacity': 1.0 },
-    });
+      source: overlaySourceId,
+      paint: { 'raster-opacity': 0.9 },
+    }, beforeLayer);
   }
-}
 
-function removePreviewLayer() {
-  if (!previewMap) return;
-  if (previewLayerId && previewMap.getLayer(previewLayerId)) {
-    previewMap.removeLayer(previewLayerId);
-  }
-  if (previewSourceId && previewMap.getSource(previewSourceId)) {
-    previewMap.removeSource(previewSourceId);
-  }
-  previewLayerId  = null;
-  previewSourceId = null;
-}
+  overlayActive = true;
 
-function closePreview() {
-  removeOverlay();
-  // Zoom back to state view
-  selectorMap.flyTo({ center: IL_CENTER, zoom: IL_ZOOM, duration: 800 });
+  // Fly to the county
+  const center = getCountyCenter();
+  const zoom = Math.max(state.zoomMin || 10, selectorMap.getZoom());
+  if (center) selectorMap.flyTo({ center, zoom, duration: 800 });
 }
-
-// Preview close handled by status card button
 
 
 
