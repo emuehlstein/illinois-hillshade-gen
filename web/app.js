@@ -266,10 +266,12 @@ function buildAvailabilityExpression() {
   if (!catalog) return '#21262d';
 
   // Build a match expression: county ilhmp_id → color
+  // Green = has ANY tiles, bright green = has tiles matching current config
   const matchArgs = [];
   for (const [id, county] of Object.entries(catalog.counties)) {
-    const hasTile = findMatchingTile(id) !== null;
-    matchArgs.push(id, hasTile ? '#1a4a2a' : '#1c2128');
+    const hasAny = county.tiles && county.tiles.length > 0;
+    const hasMatch = findMatchingTile(id) !== null;
+    matchArgs.push(id, hasMatch ? '#1a6a2a' : hasAny ? '#1a3a22' : '#1c2128');
   }
   // fallback
   matchArgs.push('#1c2128');
@@ -433,7 +435,7 @@ function openPreview() {
         }],
       },
       center: getCountyCenter(),
-      zoom: 9,
+      zoom: state.zoomMin || 10,
       attributionControl: false,
     });
 
@@ -452,7 +454,7 @@ function openPreview() {
     }
     // Fly to county center
     const center = getCountyCenter();
-    if (center) previewMap.flyTo({ center, zoom: 9, duration: 800 });
+    if (center) previewMap.flyTo({ center, zoom: state.zoomMin || 10, duration: 800 });
   }
 }
 
