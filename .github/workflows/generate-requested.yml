@@ -83,6 +83,33 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-2
       
+      - name: Check for existing tiles
+        env:
+          COUNTY: ${{ matrix.request.county }}
+          TILE_SERVER_SSH: ${{ secrets.TILE_SERVER_SSH }}
+        run: |
+          echo "🔍 Checking tile server for existing $COUNTY tiles..."
+          
+          mkdir -p ~/.ssh /tmp/tiles
+          echo "${{ secrets.TILE_SERVER_SSH_KEY }}" > ~/.ssh/mapserver-ec2.pem
+          chmod 600 ~/.ssh/mapserver-ec2.pem
+          
+          EXISTING=$(ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -o ConnectTimeout=10             "$TILE_SERVER_SSH"             "find /data/tiles -name '${COUNTY}*' -name '*.mbtiles' -exec ls {} \;" 2>/dev/null || echo "")
+          
+          if [ -n "$EXISTING" ]; then
+            echo "✅ Found existing mbtiles:"
+            echo "$EXISTING"
+            echo ""
+            echo "⏩ Downloading from tile server (skipping EC2 generation)..."
+            for f in $EXISTING; do
+              scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no                 "$TILE_SERVER_SSH:$f" /tmp/tiles/ 2>&1 || true
+            done
+            ls -lh /tmp/tiles/
+            echo "SKIP_GENERATION=true" >> $GITHUB_ENV
+          else
+            echo "No existing tiles found — will generate from scratch"
+          fi
+
       - name: Generate hillshades
         env:
           COUNTY: ${{ matrix.request.county }}
