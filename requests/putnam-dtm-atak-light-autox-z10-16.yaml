@@ -1,9 +1,0 @@
-county: putnam
-dem: dtm
-theme: atak-light
-exaggeration: auto
-zoom: 10-11
-status: completed
-retry: 3
-generated_at: '2026-05-08T23:00:42-05:00'
-github_run: https://github.com/emuehlstein/illinois-hillshade-gen/actions/runs/25591136988
