@@ -105,10 +105,34 @@ jobs:
           echo "   Exaggerations: $EXAGGERATIONS"
           echo "   Zoom: $ZOOM"
           
-          # Write SSH key before running generate-aws.sh (it needs it for SG rules + monitoring)
+          # Write SSH key
           mkdir -p ~/.ssh
           echo "${{ secrets.TILE_SERVER_SSH_KEY }}" > ~/.ssh/mapserver-ec2.pem
           chmod 600 ~/.ssh/mapserver-ec2.pem
+          
+          # Check if mbtiles already exist on tile server — skip generation if so
+          mkdir -p /tmp/tiles
+          EXISTING=$(ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -o ConnectTimeout=10             "${{ secrets.TILE_SERVER_SSH }}"             "find /data/tiles -name '${COUNTY}*' -name '*.mbtiles' -exec ls {} \;" 2>/dev/null || echo "")
+          
+          if [ -n "$EXISTING" ]; then
+            echo "✅ Found existing mbtiles on tile server:"
+            echo "$EXISTING"
+            echo "⏩ Skipping EC2 generation — downloading existing tiles"
+            for f in $EXISTING; do
+              scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no                 "${{ secrets.TILE_SERVER_SSH }}:$f" /tmp/tiles/ 2>&1 || true
+            done
+            TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
+            echo "Downloaded $TILE_COUNT existing tile(s)"
+            if [ "$TILE_COUNT" -gt 0 ]; then
+              echo "SKIP_GENERATION=true" >> $GITHUB_ENV
+              ls -lh /tmp/tiles/
+            fi
+          fi
+          
+          if [ "${SKIP_GENERATION:-}" = "true" ]; then
+            echo "⏩ Generation skipped — using existing tiles"
+            exit 0
+          fi
           
           cd aws
           
@@ -270,7 +294,7 @@ jobs:
           echo "✅ Generation complete for $COUNTY"
       
       - name: Upload to tile server
-        if: success()
+        if: success() && env.SKIP_GENERATION != 'true'
         env:
           TILE_SERVER_SSH: ${{ secrets.TILE_SERVER_SSH }}
         run: |
