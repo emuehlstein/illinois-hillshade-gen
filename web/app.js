@@ -107,14 +107,20 @@ function buildSelectorMap() {
     center: IL_CENTER,
     zoom: IL_ZOOM,
     minZoom: 5,
-    maxZoom: 12,
+    maxZoom: 20,
     attributionControl: false,
   });
 
   selectorMap.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
   selectorMap.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
+  selectorMap.on('zoom', () => {
+    const z = selectorMap.getZoom();
+    document.getElementById('stat-zoom').textContent = z.toFixed(1);
+  });
+
   selectorMap.on('load', () => {
+    document.getElementById('stat-zoom').textContent = selectorMap.getZoom().toFixed(1);
     selectorMap.addSource('counties', {
       type: 'geojson',
       data: 'counties.geojson',
