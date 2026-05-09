@@ -194,6 +194,25 @@
             border-color: #388bfd;
             color: #fff;
         }
+        .radio-group label .avail-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        .radio-group label .avail-dot.has-tile { background: #3fb950; }
+        .radio-group label .avail-dot.no-tile  { background: #30363d; }
+        .radio-group label.active .avail-dot.no-tile { background: #6e7681; }
+        .radio-group-wrap {
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .radio-group-wrap label {
+            flex: unset;
+            padding: 5px 10px;
+        }
         .radio-group label:hover:not(.active) {
             background: #21262d;
             border-color: #484f58;
@@ -469,11 +488,11 @@
                 <div class="radio-group" id="dem-group">
                     <label class="active" data-val="dtm">
                         <input type="radio" name="dem" value="dtm" checked />
-                        <span>DTM</span>
+                        <span>DTM</span><span class="avail-dot no-tile"></span>
                     </label>
                     <label data-val="dsm">
                         <input type="radio" name="dem" value="dsm" />
-                        <span>DSM</span>
+                        <span>DSM</span><span class="avail-dot no-tile"></span>
                     </label>
                 </div>
             </div>
@@ -481,15 +500,15 @@
             <!-- Theme -->
             <div class="config-section">
                 <div class="config-label">Theme</div>
-                <select id="theme-select">
-                    <option value="simmon">Simmon</option>
-                    <option value="simmon-light">Simmon Light</option>
-                    <option value="atak-dark" selected>ATAK Dark</option>
-                    <option value="atak-light">ATAK Light</option>
-                    <option value="tactical">Tactical</option>
-                    <option value="flat-terrain">Flat Terrain</option>
-                    <option value="grayscale">Grayscale</option>
-                </select>
+                <div class="radio-group radio-group-wrap" id="theme-group">
+                    <label data-val="simmon"><span>Simmon</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="simmon-light"><span>Simmon Light</span><span class="avail-dot no-tile"></span></label>
+                    <label class="active" data-val="atak-dark"><span>ATAK Dark</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="atak-light"><span>ATAK Light</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="tactical"><span>Tactical</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="flat-terrain"><span>Flat Terrain</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="grayscale"><span>Grayscale</span><span class="avail-dot no-tile"></span></label>
+                </div>
             </div>
 
             <!-- Exaggeration -->
@@ -498,19 +517,19 @@
                 <div class="radio-group" id="exag-group">
                     <label data-val="auto">
                         <input type="radio" name="exag" value="auto" />
-                        <span>Auto</span>
+                        <span>Auto</span><span class="avail-dot no-tile"></span>
                     </label>
                     <label data-val="3">
                         <input type="radio" name="exag" value="3" />
-                        <span>3×</span>
+                        <span>3×</span><span class="avail-dot no-tile"></span>
                     </label>
                     <label class="active" data-val="9">
                         <input type="radio" name="exag" value="9" checked />
-                        <span>9×</span>
+                        <span>9×</span><span class="avail-dot no-tile"></span>
                     </label>
                     <label data-val="15">
                         <input type="radio" name="exag" value="15" />
-                        <span>15×</span>
+                        <span>15×</span><span class="avail-dot no-tile"></span>
                     </label>
                 </div>
             </div>

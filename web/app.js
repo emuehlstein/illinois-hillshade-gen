@@ -244,8 +244,9 @@ function selectCounty(countyId, featureId) {
   const sel = document.getElementById('county-select');
   sel.value = countyId;
 
-  // Update status card
+  // Update status card + availability indicators
   renderStatusCard();
+  updateAvailabilityDots();
 
   // Close any open preview when switching county
   closePreview();
@@ -282,6 +283,41 @@ function buildAvailabilityExpression() {
 function refreshFillColors() {
   if (!selectorMap || !selectorMap.getLayer('counties-fill')) return;
   selectorMap.setPaintProperty('counties-fill', 'fill-color', buildAvailabilityExpression());
+}
+
+function updateAvailabilityDots() {
+  if (!state.county || !catalog) return;
+  const county = catalog.counties[state.county];
+  if (!county) return;
+  const tiles = county.tiles || [];
+
+  // Check each theme option against available tiles
+  document.querySelectorAll('#theme-group label[data-val]').forEach(label => {
+    const theme = label.dataset.val;
+    const has = tiles.some(t => t.theme === theme && t.dem === state.dem);
+    const dot = label.querySelector('.avail-dot');
+    if (dot) { dot.className = 'avail-dot ' + (has ? 'has-tile' : 'no-tile'); }
+  });
+
+  // Check each DEM option
+  document.querySelectorAll('#dem-group label[data-val]').forEach(label => {
+    const dem = label.dataset.val;
+    const has = tiles.some(t => t.dem === dem && t.theme === state.theme);
+    const dot = label.querySelector('.avail-dot');
+    if (dot) { dot.className = 'avail-dot ' + (has ? 'has-tile' : 'no-tile'); }
+  });
+
+  // Check each exaggeration option
+  document.querySelectorAll('#exag-group label[data-val]').forEach(label => {
+    const exag = label.dataset.val;
+    const has = tiles.some(t =>
+      t.dem === state.dem &&
+      t.theme === state.theme &&
+      (exag === 'auto' || String(t.exaggeration) === exag)
+    );
+    const dot = label.querySelector('.avail-dot');
+    if (dot) { dot.className = 'avail-dot ' + (has ? 'has-tile' : 'no-tile'); }
+  });
 }
 
 // ── Tile matching ──────────────────────────────────────────────────────────
@@ -548,13 +584,18 @@ function wireControls() {
     syncRadioGroup('dem-group', state.dem);
     renderStatusCard();
     refreshFillColors();
+    updateAvailabilityDots();
   });
 
-  // Theme dropdown
-  document.getElementById('theme-select').addEventListener('change', (e) => {
-    state.theme = e.target.value;
+  // Theme button group
+  document.getElementById('theme-group').addEventListener('click', (e) => {
+    const label = e.target.closest('label[data-val]');
+    if (!label) return;
+    state.theme = label.dataset.val;
+    syncRadioGroup('theme-group', state.theme);
     renderStatusCard();
     refreshFillColors();
+    updateAvailabilityDots();
   });
 
   // Exaggeration radio group
@@ -565,6 +606,7 @@ function wireControls() {
     syncRadioGroup('exag-group', state.exag);
     renderStatusCard();
     refreshFillColors();
+    updateAvailabilityDots();
   });
 
   // Zoom inputs
