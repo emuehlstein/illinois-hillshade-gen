@@ -125,13 +125,10 @@ jobs:
             echo "Downloaded $TILE_COUNT existing tile(s)"
             if [ "$TILE_COUNT" -gt 0 ]; then
               echo "SKIP_GENERATION=true" >> $GITHUB_ENV
+              echo "✅ Skipping EC2 generation — tiles already on tile server"
               ls -lh /tmp/tiles/
+              exit 0
             fi
-          fi
-          
-          if [ "${SKIP_GENERATION:-}" = "true" ]; then
-            echo "⏩ Generation skipped — using existing tiles"
-            exit 0
           fi
           
           cd aws
