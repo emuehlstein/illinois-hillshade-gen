@@ -304,11 +304,11 @@ jobs:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
         run: |
           # Install pmtiles CLI
-          wget -q https://github.com/protomaps/go-pmtiles/releases/download/v3.2.1/go-pmtiles_3.2.1_Linux_arm64.tar.gz -O /tmp/pmtiles.tar.gz || \
-          wget -q https://github.com/protomaps/go-pmtiles/releases/download/v3.2.1/go-pmtiles_3.2.1_Linux_x86_64.tar.gz -O /tmp/pmtiles.tar.gz
-          tar -xzf /tmp/pmtiles.tar.gz -C /usr/local/bin/ pmtiles 2>/dev/null || \
-          tar -xzf /tmp/pmtiles.tar.gz -C /usr/local/bin/ 2>/dev/null
+          PMTILES_VERSION="1.30.2"
+          wget -q "https://github.com/protomaps/go-pmtiles/releases/download/v${PMTILES_VERSION}/go-pmtiles_${PMTILES_VERSION}_Linux_x86_64.tar.gz" -O /tmp/pmtiles.tar.gz
+          tar -xzf /tmp/pmtiles.tar.gz -C /usr/local/bin/
           chmod +x /usr/local/bin/pmtiles
+          pmtiles --version || echo 'pmtiles installed'
           
           # Convert each mbtiles to pmtiles
           mkdir -p /tmp/pmtiles
