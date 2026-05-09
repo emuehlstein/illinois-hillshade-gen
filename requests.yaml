@@ -1,12 +1,12 @@
-# Hillshade Generation Requests
-# Add new requests below and submit a PR. CI generates tiles automatically.
 requests:
-  - county: lake
-    dem: dtm
-    styles:
-      - simmon
-    exaggerations:
-      - 9
-    zoom: "10-16"
-    status: pending
-    debug: true
+- county: lake
+  dem: dtm
+  styles:
+  - simmon
+  exaggerations:
+  - 9
+  zoom: 10-16
+  status: completed
+  debug: true
+  deployed: https://exaggeratedrelief.com/services/lake-dtm-simmon-9x-tms/map
+  generated_at: '2026-05-08T17:29:04-05:00'
