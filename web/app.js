@@ -691,6 +691,31 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+// ── Mobile bottom sheet toggle ─────────────────────────────────────────────
+(function initMobileSheet() {
+  const panel = document.getElementById('config-panel');
+  const handle = document.getElementById('config-handle');
+  if (!panel || !handle) return;
+
+  const label = handle.querySelector('.handle-label');
+
+  handle.addEventListener('click', () => {
+    const expanded = panel.classList.toggle('expanded');
+    if (label) label.textContent = expanded ? 'Controls ▼' : 'Controls ▲';
+  });
+
+  // Collapse when clicking the map on mobile
+  const mapEl = document.getElementById('selector-map');
+  if (mapEl) {
+    mapEl.addEventListener('click', () => {
+      if (window.innerWidth <= 640 && panel.classList.contains('expanded')) {
+        panel.classList.remove('expanded');
+        if (label) label.textContent = 'Controls ▲';
+      }
+    });
+  }
+})();
+
 function showError(msg) {
   const overlay = document.getElementById('loading-overlay');
   overlay.innerHTML = `

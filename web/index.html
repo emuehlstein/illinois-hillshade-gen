@@ -395,6 +395,73 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .loading-text { font-size: 13px; color: #8b949e; }
 
+        /* ── Mobile: config panel → bottom sheet ── */
+        @media (max-width: 640px) {
+            .main { flex-direction: column; }
+
+            .config-panel {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid #30363d;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 30;
+                max-height: 55vh;
+                overflow-y: auto;
+                transform: translateY(calc(100% - 44px));
+                transition: transform 0.3s ease;
+                border-radius: 12px 12px 0 0;
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+            }
+            .config-panel.expanded {
+                transform: translateY(0);
+            }
+
+            .config-panel-handle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 10px 16px 6px;
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .config-panel-handle .grip {
+                width: 32px;
+                height: 4px;
+                border-radius: 2px;
+                background: #484f58;
+            }
+            .config-panel-handle .handle-label {
+                font-size: 11px;
+                color: #8b949e;
+                margin-left: 10px;
+            }
+
+            .map-panel { flex: 1; min-height: 0; }
+            .map-hint { display: none; }
+            .map-legend { bottom: 56px; font-size: 10px; padding: 5px 8px; }
+
+            .header h1 { font-size: 15px; }
+            .header { padding: 8px 14px; }
+            .header-actions a { padding: 4px 8px; font-size: 11px; }
+
+            .stats-bar { display: none; }
+
+            .config-section { padding: 10px 14px; }
+            .config-label { font-size: 9px; margin-bottom: 5px; }
+            .radio-group label { padding: 5px 6px; font-size: 11px; }
+            .radio-group-wrap label { padding: 4px 8px; font-size: 11px; }
+            select { font-size: 14px; padding: 8px 10px; }
+
+            .generate-hint { font-size: 10px; }
+        }
+
+        @media (min-width: 641px) {
+            .config-panel-handle { display: none; }
+        }
+
         /* MapLibre overrides */
         .maplibregl-ctrl-bottom-right { bottom: 48px !important; }
         .maplibregl-ctrl-attrib { font-size: 9px !important; }
@@ -439,7 +506,11 @@
         </div>
 
         <!-- Configuration panel -->
-        <div class="config-panel">
+        <div class="config-panel" id="config-panel">
+            <div class="config-panel-handle" id="config-handle">
+                <div class="grip"></div>
+                <span class="handle-label">Controls ▲</span>
+            </div>
 
             <!-- County -->
             <div class="config-section">
