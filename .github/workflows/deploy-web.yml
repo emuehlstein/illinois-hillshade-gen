@@ -27,10 +27,21 @@ jobs:
         env:
           TILE_SERVER_SSH: ${{ secrets.TILE_SERVER_SSH }}
           TILE_SERVER_SSH_KEY: ${{ secrets.TILE_SERVER_SSH_KEY }}
+          SECURITY_GROUP: ${{ secrets.AWS_SECURITY_GROUP }}
         run: |
           mkdir -p ~/.ssh
           echo "$TILE_SERVER_SSH_KEY" > ~/.ssh/mapserver-ec2.pem
           chmod 600 ~/.ssh/mapserver-ec2.pem
+
+          # Allow this runner's IP to reach the tile server
+          MY_IP=$(curl -s --max-time 5 ifconfig.me 2>/dev/null || curl -s checkip.amazonaws.com)
+          echo "Opening SG for $MY_IP..."
+          aws ec2 authorize-security-group-ingress \
+            --region us-east-2 \
+            --group-id "$SECURITY_GROUP" \
+            --protocol tcp --port 22 \
+            --cidr "${MY_IP}/32" > /dev/null 2>&1 || true
+          sleep 3
 
           # Upload web files
           scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
