@@ -422,7 +422,7 @@ chmod +x /opt/run-hillshade.sh
 sed -i 's|__DEM_UPPER__|${DEM^^}|g' /opt/run-hillshade.sh
 sed -i 's|__DEM__|${DEM}|g' /opt/run-hillshade.sh
 sed -i 's|__ZOOM__|${ZOOM}|g' /opt/run-hillshade.sh
-sed -i 's|__S3_BUCKET__|${S3_BUCKET}|g' /opt/run-hillshade.sh
+sed -i "s|__S3_BUCKET__|${S3_BUCKET}|g" /opt/run-hillshade.sh
 sed -i 's|__KEEP_INTERMEDIATES__|${KEEP_INTERMEDIATES}|g' /opt/run-hillshade.sh
 sed -i 's|__TILE_SERVER_HOST__|${TILE_SERVER_PRIVATE_IP:-}|g' /opt/run-hillshade.sh
 echo "=== Setup complete, launching worker detached at \$(date) ==="
