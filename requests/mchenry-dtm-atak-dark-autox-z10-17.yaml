@@ -4,4 +4,3 @@ theme: atak-dark
 exaggeration: auto
 zoom: "10-17"
 status: pending
-# retry: with S3 intermediate cache
