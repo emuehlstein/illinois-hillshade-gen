@@ -35,6 +35,11 @@ jobs:
             --cache-control "no-cache" --content-type "text/html"
           aws s3 cp web/status.html s3://exaggeratedrelief/status.html \
             --cache-control "no-cache" --content-type "text/html"
+          # Seed status/index.json if it doesn't exist
+          aws s3 ls s3://exaggeratedrelief/status/index.json > /dev/null 2>&1 || \
+            echo '{"updated_at":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","jobs":[]}' | \
+            aws s3 cp - s3://exaggeratedrelief/status/index.json \
+              --cache-control "no-cache" --content-type "application/json"
           echo "✅ Web files uploaded to S3"
 
       - name: Invalidate CloudFront cache
