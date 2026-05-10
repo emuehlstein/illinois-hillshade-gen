@@ -7,6 +7,7 @@ const GENERATE_URL_DEFAULT =
 
 // ── State ──────────────────────────────────────────────────────────────────
 let catalog       = null;
+let statusIndex   = null;   // status/index.json (generation pipeline)
 let selectorMap   = null;
 let overlayActive = false;
 let overlayLayerId = null;
@@ -48,6 +49,17 @@ const state = {
   } catch (err) {
     showError('Failed to load catalog.json: ' + err.message);
     return;
+  }
+
+  // Load generation status index (non-fatal — best effort)
+  try {
+    const sresp = await fetch('/status/index.json');
+    if (sresp.ok) {
+      statusIndex = await sresp.json();
+      console.log('[init] status index loaded:', (statusIndex.jobs || []).length, 'jobs');
+    }
+  } catch (e) {
+    console.log('[init] status index unavailable (ok)');
   }
 
   try {
@@ -372,6 +384,10 @@ function renderStatusCard() {
   const tile = findMatchingTile(state.county);
   const countyName = countyData.name || capitalize(state.county);
 
+  // Look up any active/recent pipeline job for this county+theme combo
+  const activeJob = findActiveJob(state.county, state.theme);
+  const jobStatusHtml = activeJob ? renderInlineJobStatus(activeJob) : '';
+
   if (tile) {
     const sizeMB   = tile.pmtiles_size_mb || tile.mbtiles_size_mb;
     const sizeStr  = sizeMB ? formatSize(sizeMB) : '—';
@@ -395,6 +411,7 @@ function renderStatusCard() {
         <div class="meta-row"><span class="meta-key">Generated</span><span class="meta-val">${genDate}</span></div>
         <div class="meta-row"><span class="meta-key">Source</span><span class="meta-val">${sourceStr}</span></div>
       </div>
+      ${jobStatusHtml}
       <div class="action-row">
         <button class="btn btn-primary" id="btn-preview" onclick="toggleOverlay()">👁 Show on Map</button>
         <a class="btn btn-secondary" href="${pmtilesUrl}" download>⬇ Download</a>
@@ -416,6 +433,7 @@ function renderStatusCard() {
         <div class="meta-row"><span class="meta-key">DEM year</span><span class="meta-val">${demYear}</span></div>
         ${demSize ? `<div class="meta-row"><span class="meta-key">DEM size</span><span class="meta-val">${demSize}</span></div>` : ''}
       </div>
+      ${jobStatusHtml}
       <div class="action-row">
         <a class="btn btn-green" href="${generateUrl}" target="_blank">🔧 Generate via PR</a>
       </div>
@@ -426,6 +444,56 @@ function renderStatusCard() {
       </div>
     `;
   }
+}
+
+// ── Inline pipeline status helpers ────────────────────────────────────────────
+
+function findActiveJob(countyId, theme) {
+  if (!statusIndex || !statusIndex.jobs) return null;
+  // Match county; theme matching is fuzzy (prefix) since theme keys vary
+  return statusIndex.jobs.find(j =>
+    j.county === countyId &&
+    (j.theme === theme || j.theme?.startsWith(theme) || theme?.startsWith(j.theme))
+  ) || statusIndex.jobs.find(j => j.county === countyId) || null;
+}
+
+function renderInlineJobStatus(job) {
+  const status = job.status || 'unknown';
+  const phase = job.phase || '';
+  const pct = Math.max(0, Math.min(100, job.percent || 0));
+
+  const BADGE_COLORS = {
+    complete:     'color:#3fb950;background:#1a4731;border-color:#238636',
+    running:      'color:#58a6ff;background:#0c2d6b;border-color:#1f6feb',
+    uploading:    'color:#79c0ff;background:#0c2d6b;border-color:#1f6feb',
+    queued:       'color:#d29922;background:#2d1b00;border-color:#9e6a03',
+    validating:   'color:#d29922;background:#2d1b00;border-color:#9e6a03',
+    provisioning: 'color:#d29922;background:#2d1b00;border-color:#9e6a03',
+    failed:       'color:#f85149;background:#3d1212;border-color:#8e1519',
+    cancelled:    'color:#6e7681;background:#21262d;border-color:#30363d',
+  };
+  const badgeStyle = BADGE_COLORS[status] || BADGE_COLORS.cancelled;
+
+  // Only show bar when actively in-progress
+  const showBar = ['running','uploading','provisioning','queued','validating'].includes(status);
+  const barHtml = showBar ? `
+    <div style="height:3px;background:#21262d;border-radius:2px;margin-top:6px;overflow:hidden;">
+      <div style="height:100%;width:${pct}%;background:#388bfd;border-radius:2px;"></div>
+    </div>` : '';
+
+  return `
+    <div style="margin:8px 0;padding:8px 10px;background:#0d1117;border:1px solid #30363d;border-radius:6px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span style="font-size:11px;color:#8b949e;">Pipeline</span>
+        <span style="display:inline-block;font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;border:1px solid;${badgeStyle};text-transform:uppercase;">${status}</span>
+      </div>
+      <div style="font-size:11px;color:#8b949e;margin-top:3px;font-family:monospace;">${phase}${pct ? ' · ' + pct + '%' : ''}</div>
+      ${barHtml}
+      <div style="margin-top:6px;font-size:11px;">
+        <a href="/status.html" style="color:#58a6ff;text-decoration:none;">→ View on status page</a>
+      </div>
+    </div>
+  `;
 }
 
 function buildGenerateUrl(countyName) {

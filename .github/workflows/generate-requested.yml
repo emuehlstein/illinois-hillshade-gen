@@ -123,10 +123,23 @@ jobs:
           KEY_PAIR_NAME: ${{ secrets.AWS_KEY_PAIR_NAME }}
           IAM_INSTANCE_PROFILE: ${{ secrets.AWS_IAM_INSTANCE_PROFILE }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          STATUS_BUCKET: exaggeratedrelief
           WORKER_INSTANCE_TYPE: c7g.2xlarge
           DEBUG_KEEP_ALIVE: ${{ github.event.inputs.debug || 'false' }}
         run: |
           echo "🗺️  Generating hillshades for $COUNTY"
+
+          # ── Status: init job ──────────────────────────────────────────
+          ::group::Status tracking
+          JOB_ID="${COUNTY}-${STYLES}-${EXAGGERATIONS}x-z${ZOOM//[-]/-}"
+          python3 -c "
+import sys; sys.path.insert(0, '.')
+from ilhmp.status import StatusTracker
+t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+t.init('${JOB_ID}', county='${COUNTY}', theme='${STYLES}', dem='${DEM}', zoom='${ZOOM}', exaggeration='${EXAGGERATIONS}', github_run_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+t.update(status='provisioning', phase='provision_worker', percent=5, message='Launching EC2 worker')
+" || echo '::warning::Status init failed (non-fatal)'
+          ::endgroup::
           echo "   DEM: $DEM"
           echo "   Styles: $STYLES"
           echo "   Exaggerations: $EXAGGERATIONS"
@@ -191,6 +204,14 @@ jobs:
             echo "   (stream name: ${COUNTY}-${WORKER_INSTANCE_ID})"
             echo ""
             
+            # ── Status: worker launched ──────────────────────────────────────────
+            python3 -c "
+import sys; sys.path.insert(0, '.')
+from ilhmp.status import StatusTracker
+t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+t.update(status='provisioning', phase='provision_worker', percent=10, message='Worker launched: ${WORKER_INSTANCE_ID} (${WORKER_IP})')
+" || true
+
             # Write startup manifest to S3 for tracking/cleanup
             RUN_ID="${COUNTY}-$(date +%Y%m%d-%H%M%S)"
             cat > /tmp/run-manifest.json << MANIFEST
@@ -266,7 +287,20 @@ jobs:
             ' 2>/dev/null || echo "   (SSH failed)")
             
             echo "$PROGRESS"
-            
+
+            # ── Status: periodic update during polling ─────────────────────────────────
+            if [ $((ITERATION % 10)) -eq 0 ]; then
+              MBTILE_COUNT=$(echo "$PROGRESS" | grep -oP '\d+ mbtiles' | grep -oP '\d+' | head -1 || echo 0)
+              # Rough percent: base 15 (running) + up to 65 more based on iteration
+              GEN_PCT=$(( 15 + (ITERATION * 65 / MAX_ITERATIONS) ))
+              python3 -c "
+import sys; sys.path.insert(0, '.')
+from ilhmp.status import StatusTracker
+t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+t.update(status='running', phase='generate_tiles', percent=${GEN_PCT}, message='Generating tiles z${ZOOM} · iteration ${ITERATION}/${MAX_ITERATIONS} · ${MBTILE_COUNT} mbtiles')
+" || true
+            fi
+
             # Break if DONE marker found
             if echo "$PROGRESS" | grep -q "DONE_FOUND"; then
               echo "🎉 Generation complete!"
@@ -339,11 +373,19 @@ jobs:
           
           echo "✅ Downloaded $TILE_COUNT tile(s):"
           ls -lh /tmp/tiles/
-          
+
+          # ── Status: tiles downloaded, starting upload phase ─────────────────────────
+          python3 -c "
+import sys; sys.path.insert(0, '.')
+from ilhmp.status import StatusTracker
+t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+t.update(status='uploading', phase='upload_artifacts', percent=85, message='Uploading ${TILE_COUNT} tile(s) to tile server')
+" || true
+
           # Upload success log to S3
           aws s3 cp /tmp/generate-${COUNTY}.log \
             s3://$S3_BUCKET/ci/logs/${COUNTY}-success-$(date +%Y%m%d-%H%M%S).log
-          
+
           echo "✅ Generation complete for $COUNTY"
       
       - name: Upload to tile server
@@ -407,6 +449,16 @@ jobs:
             fi
           done
           
+          # ── Status: pmtiles packaged ───────────────────────────────────────────
+          PMTILES_NAME="${COUNTY}-${STYLES}-${EXAGGERATIONS}x.pmtiles"
+          PMTILES_URL="https://exaggeratedrelief.s3.us-east-2.amazonaws.com/tiles/${PMTILES_NAME}"
+          python3 -c "
+import sys; sys.path.insert(0, '.')
+from ilhmp.status import StatusTracker
+t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+t.update(status='uploading', phase='package_pmtiles', percent=90, message='PMTiles published: ${PMTILES_NAME}', pmtiles_url='${PMTILES_URL}')
+" || true
+
           echo "✅ PMTiles published to exaggeratedrelief.com"
 
       - name: Update catalog.json
@@ -479,15 +531,26 @@ jobs:
               --paths "/catalog.json" > /dev/null 2>&1 || true
           fi
           
+          # ── Status: catalog updated ─────────────────────────────────────────
+          python3 -c "
+import sys; sys.path.insert(0, '.')
+from ilhmp.status import StatusTracker
+t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+t.update(status='running', phase='update_catalog', percent=95, message='Catalog updated')
+" || true
+
           echo "✅ Catalog updated on exaggeratedrelief.com"
       
       - name: Mark as completed
         if: success()
         run: |
           python3 << 'EOF'
-          import yaml, os, glob
+          import yaml, os, glob, sys
+          sys.path.insert(0, '.')
           
           county = os.environ['COUNTY']
+          styles = os.environ.get('STYLES', '')
+          exags  = os.environ.get('EXAGGERATIONS', '')
           request_file = os.environ.get('REQUEST_FILE', '')
           
           # Find the request file
@@ -509,6 +572,22 @@ jobs:
               print(f"Marked {target} as completed")
           else:
               print(f"Warning: could not find request file for {county}")
+          
+          # ── Status: mark complete ──────────────────────────────────────────
+          try:
+              from ilhmp.status import StatusTracker
+              pmtiles_name = f"{county}-{styles}-{exags}x.pmtiles"
+              pmtiles_url  = f"https://exaggeratedrelief.s3.us-east-2.amazonaws.com/tiles/{pmtiles_name}"
+              t = StatusTracker('exaggeratedrelief', os.environ.get('GITHUB_RUN_ID'))
+              rec = t.complete(outputs={
+                  'pmtiles_url': pmtiles_url,
+                  'pmtiles_name': pmtiles_name,
+                  'github_run_url': os.environ.get('GITHUB_RUN_URL', ''),
+              })
+              t.write_github_summary(rec)
+              print("Status marked complete")
+          except Exception as e:
+              print(f"Warning: status complete failed (non-fatal): {e}")
           EOF
           
           git config user.name "github-actions[bot]"
@@ -523,3 +602,25 @@ jobs:
           REQUEST_FILE: ${{ matrix.request.request_file }}
           GITHUB_RUN_STARTED_AT: ${{ github.event.head_commit.timestamp }}
           GITHUB_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Report failure status
+        if: failure()
+        env:
+          COUNTY: ${{ matrix.request.county }}
+          STYLES: ${{ matrix.request.styles }}
+          EXAGGERATIONS: ${{ matrix.request.exaggerations }}
+        run: |
+          python3 -c "
+import sys; sys.path.insert(0, '.')
+try:
+    from ilhmp.status import StatusTracker
+    t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+    rec = t.fail(
+        phase='generate_tiles',
+        error='GitHub Actions step failed. See run logs for details.',
+        next_action='Check logs at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+    )
+    t.write_github_summary(rec)
+except Exception as e:
+    print(f'Status fail report failed (non-fatal): {e}')
+" || true

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Generation Status — Exaggerated Relief</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+    .header h1 .accent { color: #58a6ff; }
+    .header-actions { display: flex; gap: 8px; }
+    .header-actions a {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 10px;
+      background: #21262d; border: 1px solid #30363d; border-radius: 6px;
+      color: #c9d1d9; text-decoration: none; font-size: 12px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .header-actions a:hover { background: #30363d; border-color: #484f58; }
+
+    /* ── Main ── */
+    .main { max-width: 960px; margin: 0 auto; padding: 24px 20px; }
+
+    .page-title {
+      font-size: 20px; font-weight: 600; margin-bottom: 6px;
+    }
+    .page-subtitle {
+      font-size: 13px; color: #8b949e; margin-bottom: 24px;
+    }
+
+    /* ── Refresh indicator ── */
+    .refresh-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; font-size: 12px; color: #6e7681;
+    }
+    .refresh-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: #6e7681; margin-right: 6px; vertical-align: middle;
+    }
+    .refresh-dot.active { background: #3fb950; animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .btn-refresh {
+      background: #21262d; border: 1px solid #30363d; border-radius: 5px;
+      color: #c9d1d9; font-size: 11px; padding: 3px 8px; cursor: pointer;
+    }
+    .btn-refresh:hover { background: #30363d; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: #6e7681; font-size: 14px;
+    }
+    .empty-state .icon { font-size: 32px; margin-bottom: 12px; }
+
+    /* ── Job table ── */
+    .jobs-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .job-card {
+      background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+      overflow: hidden; cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .job-card:hover { border-color: #484f58; }
+    .job-card.expanded { border-color: #58a6ff; }
+
+    .job-summary {
+      display: grid;
+      grid-template-columns: 1fr 90px 140px 90px 1fr 100px;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+    }
+    @media (max-width: 640px) {
+      .job-summary {
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto auto;
+      }
+      .job-col-phase, .job-col-updated { display: none; }
+    }
+
+    .job-col-name { font-size: 13px; font-weight: 500; font-family: monospace; }
+    .job-col-badge { }
+    .job-col-phase { font-size: 11px; color: #8b949e; font-family: monospace; }
+    .job-col-percent { font-size: 12px; color: #8b949e; text-align: right; }
+    .job-col-progress { }
+    .job-col-updated { font-size: 11px; color: #6e7681; text-align: right; }
+
+    /* ── Progress bar ── */
+    .progress-bar {
+      height: 4px; background: #21262d; border-radius: 2px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 2px; transition: width 0.4s ease;
+    }
+    .progress-fill.complete { background: #3fb950; }
+    .progress-fill.running  { background: #388bfd; }
+    .progress-fill.uploading { background: #58a6ff; }
+    .progress-fill.failed   { background: #f85149; }
+    .progress-fill.queued, .progress-fill.validating,
+    .progress-fill.provisioning { background: #d29922; }
+    .progress-fill.cancelled { background: #6e7681; }
+
+    /* ── Status badges ── */
+    .badge {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 2px 7px; border-radius: 12px; letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .badge-complete    { background: #1a4731; color: #3fb950; border: 1px solid #238636; }
+    .badge-running     { background: #0c2d6b; color: #58a6ff; border: 1px solid #1f6feb; }
+    .badge-uploading   { background: #0c2d6b; color: #79c0ff; border: 1px solid #1f6feb; }
+    .badge-queued,
+    .badge-validating,
+    .badge-provisioning { background: #2d1b00; color: #d29922; border: 1px solid #9e6a03; }
+    .badge-failed      { background: #3d1212; color: #f85149; border: 1px solid #8e1519; }
+    .badge-cancelled   { background: #21262d; color: #6e7681; border: 1px solid #30363d; }
+
+    /* ── Detail panel ── */
+    .job-detail {
+      display: none;
+      border-top: 1px solid #30363d;
+      padding: 16px;
+      background: #0d1117;
+    }
+    .job-card.expanded .job-detail { display: block; }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 640px) { .detail-grid { grid-template-columns: 1fr; } }
+
+    .detail-section h4 {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      color: #8b949e; letter-spacing: 0.05em; margin-bottom: 8px;
+    }
+
+    .meta-table { width: 100%; font-size: 12px; }
+    .meta-table tr td:first-child { color: #8b949e; padding-right: 12px; padding-bottom: 4px; }
+    .meta-table tr td:last-child { color: #e6edf3; font-family: monospace; }
+
+    .error-box {
+      background: #3d1212; border: 1px solid #8e1519; border-radius: 6px;
+      padding: 10px 12px; font-size: 12px; color: #f85149; font-family: monospace;
+      white-space: pre-wrap; word-break: break-word; margin-top: 8px;
+    }
+
+    .outputs-list { font-size: 12px; }
+    .outputs-list .out-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 3px 0; border-bottom: 1px solid #21262d;
+    }
+    .outputs-list .out-key { color: #8b949e; }
+    .outputs-list .out-val { color: #e6edf3; font-family: monospace; }
+
+    .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .detail-actions a {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 12px; border-radius: 6px; font-size: 12px; text-decoration: none;
+      background: #21262d; border: 1px solid #30363d; color: #c9d1d9;
+      transition: background 0.15s;
+    }
+    .detail-actions a:hover { background: #30363d; }
+    .detail-actions a.primary { background: #1f6feb; border-color: #388bfd; color: #fff; }
+    .detail-actions a.primary:hover { background: #388bfd; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">🗺️</div>
+    <h1>Exaggerated <span class="accent">Relief</span></h1>
+  </div>
+  <div class="header-actions">
+    <a href="/">← Map</a>
+    <a href="https://github.com/emuehlstein/illinois-hillshade-gen/actions" target="_blank">GitHub Actions ↗</a>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">Generation Status</div>
+  <div class="page-subtitle">Live pipeline status — updates every 30s when jobs are active</div>
+
+  <div class="refresh-bar">
+    <div>
+      <span class="refresh-dot" id="refresh-dot"></span>
+      <span id="refresh-label">Loading…</span>
+    </div>
+    <button class="btn-refresh" onclick="loadIndex()">↻ Refresh</button>
+  </div>
+
+  <div id="jobs-container">
+    <div class="empty-state">
+      <div class="icon">⏳</div>
+      Loading status…
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const INDEX_URL   = '/status/index.json';
+const REFRESH_MS  = 30000;
+
+let refreshTimer  = null;
+let expandedJobs  = new Set();
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+loadIndex();
+
+// ── Data ──────────────────────────────────────────────────────────────────
+async function loadIndex() {
+  try {
+    const resp = await fetch(INDEX_URL + '?_=' + Date.now());
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    renderJobs(data);
+    scheduleRefresh(data);
+    updateRefreshLabel(data.updated_at);
+  } catch (err) {
+    document.getElementById('jobs-container').innerHTML =
+      `<div class="empty-state"><div class="icon">⚠️</div>Failed to load status: ${err.message}</div>`;
+    setRefreshActive(false);
+  }
+}
+
+function scheduleRefresh(data) {
+  clearTimeout(refreshTimer);
+  const active = (data.jobs || []).some(j =>
+    ['running', 'provisioning', 'uploading', 'queued', 'validating'].includes(j.status)
+  );
+  setRefreshActive(active);
+  if (active) {
+    refreshTimer = setTimeout(loadIndex, REFRESH_MS);
+  }
+}
+
+function setRefreshActive(active) {
+  const dot = document.getElementById('refresh-dot');
+  dot.className = 'refresh-dot' + (active ? ' active' : '');
+}
+
+function updateRefreshLabel(updatedAt) {
+  const label = document.getElementById('refresh-label');
+  if (updatedAt) {
+    const d = new Date(updatedAt);
+    label.textContent = `Updated ${d.toLocaleTimeString()}`;
+  } else {
+    label.textContent = 'Status loaded';
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function renderJobs(data) {
+  const container = document.getElementById('jobs-container');
+  const jobs = data.jobs || [];
+
+  if (jobs.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">✅</div>
+        No active jobs — all quiet on the pipeline front.
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'jobs-list';
+
+  jobs.forEach(job => {
+    list.appendChild(buildJobCard(job));
+  });
+
+  container.appendChild(list);
+}
+
+function buildJobCard(job) {
+  const card = document.createElement('div');
+  card.className = 'job-card' + (expandedJobs.has(job.job_id) ? ' expanded' : '');
+  card.dataset.jobId = job.job_id;
+
+  const pct = Math.max(0, Math.min(100, job.percent || 0));
+  const statusClass = job.status.replace(/[^a-z]/g, '');
+  const updatedAgo = timeAgo(job.updated_at);
+
+  card.innerHTML = `
+    <div class="job-summary" onclick="toggleCard('${job.job_id}')">
+      <div class="job-col-name">${esc(job.job_id)}</div>
+      <div class="job-col-badge">
+        <span class="badge badge-${statusClass}">${job.status}</span>
+      </div>
+      <div class="job-col-phase">${esc(job.phase || '')}</div>
+      <div class="job-col-percent">${pct}%</div>
+      <div class="job-col-progress">
+        <div class="progress-bar">
+          <div class="progress-fill ${statusClass}" style="width:${pct}%"></div>
+        </div>
+      </div>
+      <div class="job-col-updated">${updatedAgo}</div>
+    </div>
+    <div class="job-detail" id="detail-${job.job_id}">
+      <div style="color:#8b949e; font-size:12px;">Loading detail…</div>
+    </div>
+  `;
+
+  return card;
+}
+
+async function toggleCard(jobId) {
+  const card = document.querySelector(`[data-job-id="${jobId}"]`);
+  if (!card) return;
+
+  if (expandedJobs.has(jobId)) {
+    expandedJobs.delete(jobId);
+    card.classList.remove('expanded');
+  } else {
+    expandedJobs.add(jobId);
+    card.classList.add('expanded');
+    await loadJobDetail(jobId);
+  }
+}
+
+async function loadJobDetail(jobId) {
+  const panel = document.getElementById(`detail-${jobId}`);
+  if (!panel) return;
+
+  try {
+    const resp = await fetch(`/status/jobs/${jobId}.json?_=${Date.now()}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const job = await resp.json();
+    panel.innerHTML = renderDetail(job);
+  } catch (err) {
+    panel.innerHTML = `<div style="color:#f85149;font-size:12px;">Failed to load detail: ${err.message}</div>`;
+  }
+}
+
+function renderDetail(job) {
+  const outputs = job.outputs || {};
+  const hasOutputs = Object.keys(outputs).length > 0;
+
+  const outputRows = hasOutputs
+    ? Object.entries(outputs).map(([k, v]) => {
+        const isUrl = typeof v === 'string' && v.startsWith('http');
+        const valHtml = isUrl
+          ? `<a href="${esc(v)}" target="_blank" style="color:#58a6ff;">${esc(v)}</a>`
+          : `<span class="out-val">${esc(String(v))}</span>`;
+        return `<div class="out-row"><span class="out-key">${esc(k)}</span>${valHtml}</div>`;
+      }).join('')
+    : `<div style="color:#6e7681;font-size:11px;">No outputs yet</div>`;
+
+  const pmtilesUrl = outputs.pmtiles_url || '';
+
+  const actions = [];
+  if (job.github_run_url) {
+    actions.push(`<a href="${esc(job.github_run_url)}" target="_blank">🔧 GitHub Actions ↗</a>`);
+  }
+  if (pmtilesUrl) {
+    actions.push(`<a href="${esc(pmtilesUrl)}" target="_blank" class="primary">⬇ Download PMTiles</a>`);
+  }
+
+  return `
+    <div class="detail-grid">
+      <div class="detail-section">
+        <h4>Job Info</h4>
+        <table class="meta-table">
+          <tr><td>Job ID</td><td>${esc(job.job_id)}</td></tr>
+          <tr><td>County</td><td>${esc(job.county)}</td></tr>
+          <tr><td>Theme</td><td>${esc(job.theme)}</td></tr>
+          <tr><td>DEM</td><td>${esc(job.dem)}</td></tr>
+          <tr><td>Exaggeration</td><td>${esc(String(job.exaggeration))}×</td></tr>
+          <tr><td>Zoom</td><td>${esc(job.zoom)}</td></tr>
+          <tr><td>Started</td><td>${fmtDate(job.started_at)}</td></tr>
+          <tr><td>Updated</td><td>${fmtDate(job.updated_at)}</td></tr>
+          ${job.message ? `<tr><td>Message</td><td>${esc(job.message)}</td></tr>` : ''}
+        </table>
+      </div>
+      <div class="detail-section">
+        <h4>Outputs</h4>
+        <div class="outputs-list">${outputRows}</div>
+      </div>
+    </div>
+    ${job.error ? `<h4 style="font-size:11px;color:#f85149;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Error</h4><div class="error-box">${esc(job.error)}</div>` : ''}
+    ${job.next_action ? `<div style="margin-top:8px;font-size:12px;color:#d29922;">💡 ${esc(job.next_action)}</div>` : ''}
+    ${actions.length ? `<div class="detail-actions">${actions.join('')}</div>` : ''}
+  `;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString(); } catch { return iso; }
+}
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (secs < 60)  return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs/60)}m ago`;
+  return `${Math.floor(secs/3600)}h ago`;
+}
+</script>
+</body>
+</html>
