@@ -191,6 +191,24 @@ for COUNTY in "\$@"; do
     CACHE="/data/cache/\${COUNTY}"
     mkdir -p "\${CACHE}"
 
+    # ── S3 intermediate cache ────────────────────────────────────────────────
+    # Pull reprojected DEM + any grayscale TIFs from S3 before running ilhmp.
+    # On retry, this skips the expensive DEM download + reproject (~20-30 min).
+    S3_INTERMEDIATES="s3://__S3_BUCKET__/\${COUNTY}/intermediates"
+    echo "🔍 Checking S3 for cached intermediates: \${S3_INTERMEDIATES}/"
+    aws s3 ls "\${S3_INTERMEDIATES}/" 2>/dev/null | awk '{print $4}' | while read KEY; do
+        LOCAL="\${CACHE}/\${KEY}"
+        if [[ ! -f "\${LOCAL}" ]]; then
+            echo "   ⬇ Pulling \${KEY} from S3..."
+            aws s3 cp "\${S3_INTERMEDIATES}/\${KEY}" "\${LOCAL}" --quiet \
+                && echo "   ✓ Pulled \${KEY}" \
+                || echo "   ⚠️  Pull failed for \${KEY} (non-fatal)"
+        else
+            echo "   ⏩ Already local: \${KEY}"
+        fi
+    done
+    # ────────────────────────────────────────────────────────────────────────
+
     COMBO=0
     TOTAL=\$(( \${#STYLES[@]} * \${#EXAGGS[@]} ))
 
@@ -334,8 +352,28 @@ else:
 
             # Upload mbtiles to S3 as checkpoint (survives instance termination)
             S3_KEY="s3://__S3_BUCKET__/\${COUNTY}/mbtiles/\$(basename \${MBTILES})"
-            echo "   ↑ Uploading to \${S3_KEY}..."
-            aws s3 cp "\${MBTILES}" "\${S3_KEY}" --quiet 2>/dev/null && echo "   ↑ S3 upload complete" || echo "   ⚠️ S3 upload failed (non-fatal)"
+            echo "   ↑ Uploading mbtiles to \${S3_KEY}..."
+            aws s3 cp "\${MBTILES}" "\${S3_KEY}" --quiet 2>/dev/null && echo "   ↑ S3 mbtiles upload complete" || echo "   ⚠️ S3 mbtiles upload failed (non-fatal)"
+
+            # ── Push intermediates to S3 after first successful combo ──────────
+            # Reprojected DEM + grayscale TIFs are expensive to regenerate.
+            # Upload them now so future runs (new style, retry) can pull them.
+            echo "   ↑ Syncing intermediates to S3..."
+            for INTERMEDIATE in "\${CACHE}/"*.tif; do
+                [[ -f "\${INTERMEDIATE}" ]] || continue
+                IKEY="\$(basename \${INTERMEDIATE})"
+                ALREADY=\$(aws s3 ls "\${S3_INTERMEDIATES}/\${IKEY}" 2>/dev/null | awk '{print $3}' || echo "0")
+                LOCAL_SIZE=\$(stat -f%z "\${INTERMEDIATE}" 2>/dev/null || stat -c%s "\${INTERMEDIATE}" 2>/dev/null || echo "0")
+                if [[ "\${ALREADY:-0}" == "\${LOCAL_SIZE}" ]]; then
+                    echo "      ⏩ Already in S3: \${IKEY}"
+                else
+                    echo "      ↑ Pushing \${IKEY} (\$(du -h "\${INTERMEDIATE}" | cut -f1))..."
+                    aws s3 cp "\${INTERMEDIATE}" "\${S3_INTERMEDIATES}/\${IKEY}" --quiet \
+                        && echo "      ✓ Pushed \${IKEY}" \
+                        || echo "      ⚠️  Push failed for \${IKEY} (non-fatal)"
+                fi
+            done
+            # ────────────────────────────────────────────────────────────────
 
             # Upload directly to tile server (cloud-to-cloud, no local hop)
             # Requires self-referencing SG rule (run fix-worker-scp.sh first)
@@ -356,6 +394,8 @@ else:
     if [[ "__KEEP_INTERMEDIATES__" != "true" ]]; then
         echo "Cleaning style-specific cache for \${COUNTY}..."
         find "\${CACHE}" -name "*_hillshade_*.tif" -delete 2>/dev/null || true
+        # Also purge grayscale TIFs — they're in S3 now, no need to hold disk
+        find "\${CACHE}" -name "*_gray_*.tif" -delete 2>/dev/null || true
     else
         echo "Keeping intermediates for \${COUNTY} (--keep-intermediates set)"
     fi
