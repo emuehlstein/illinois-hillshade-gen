@@ -196,17 +196,23 @@ for COUNTY in "\$@"; do
     # On retry, this skips the expensive DEM download + reproject (~20-30 min).
     S3_INTERMEDIATES="s3://__S3_BUCKET__/\${COUNTY}/intermediates"
     echo "🔍 Checking S3 for cached intermediates: \${S3_INTERMEDIATES}/"
-    aws s3 ls "\${S3_INTERMEDIATES}/" 2>/dev/null | awk '{print \$4}' | while read KEY; do
-        LOCAL="\${CACHE}/\${KEY}"
-        if [[ ! -f "\${LOCAL}" ]]; then
-            echo "   ⬇ Pulling \${KEY} from S3..."
-            aws s3 cp "\${S3_INTERMEDIATES}/\${KEY}" "\${LOCAL}" --quiet \
-                && echo "   ✓ Pulled \${KEY}" \
-                || echo "   ⚠️  Pull failed for \${KEY} (non-fatal)"
-        else
-            echo "   ⏩ Already local: \${KEY}"
-        fi
-    done
+    S3_FILES=\$(aws s3 ls "\${S3_INTERMEDIATES}/" --no-paginate 2>/dev/null | awk '{print \$4}' || true)
+    if [[ -z "\${S3_FILES}" ]]; then
+        echo "   (no cached intermediates found — fresh run)"
+    else
+        echo "\${S3_FILES}" | while read KEY; do
+            [[ -z "\${KEY}" ]] && continue
+            LOCAL="\${CACHE}/\${KEY}"
+            if [[ ! -f "\${LOCAL}" ]]; then
+                echo "   ⬇ Pulling \${KEY} from S3..."
+                aws s3 cp "\${S3_INTERMEDIATES}/\${KEY}" "\${LOCAL}" --quiet \
+                    && echo "   ✓ Pulled \${KEY}" \
+                    || echo "   ⚠️  Pull failed for \${KEY} (non-fatal)"
+            else
+                echo "   ⏩ Already local: \${KEY}"
+            fi
+        done
+    fi
     # ────────────────────────────────────────────────────────────────────────
 
     COMBO=0
