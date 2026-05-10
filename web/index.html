@@ -219,19 +219,54 @@
             color: #c9d1d9;
         }
 
-        /* Zoom row */
-        .zoom-row {
+        /* Zoom chips */
+        .zoom-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .zoom-chip {
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            width: 32px;
+            height: 28px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            font-family: monospace;
+            color: #8b949e;
+            transition: all 0.15s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        .zoom-row input {
-            flex: 1;
+        .zoom-chip:hover:not(.active) {
+            background: #21262d;
+            border-color: #484f58;
+            color: #c9d1d9;
         }
-        .zoom-sep {
-            color: #484f58;
-            font-size: 12px;
+        .zoom-chip.active {
+            background: #1f6feb;
+            border-color: #388bfd;
+            color: #fff;
         }
+        .zoom-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .zoom-actions button {
+            background: none;
+            border: none;
+            color: #58a6ff;
+            font-size: 10px;
+            cursor: pointer;
+            padding: 2px 4px;
+            font-family: inherit;
+        }
+        .zoom-actions button:hover { text-decoration: underline; }
 
         /* Divider */
         .divider {
@@ -572,13 +607,15 @@
                 </div>
             </div>
 
-            <!-- Zoom range -->
+            <!-- Zoom levels -->
             <div class="config-section">
-                <div class="config-label">Zoom Range</div>
-                <div class="zoom-row">
-                    <input type="number" id="zoom-min" value="10" min="0" max="22" />
-                    <span class="zoom-sep">—</span>
-                    <input type="number" id="zoom-max" value="16" min="0" max="22" />
+                <div class="config-label">Zoom Levels</div>
+                <div class="zoom-chips" id="zoom-chips"></div>
+                <div class="zoom-actions">
+                    <button onclick="zoomSelectRange(10,16)">10–16</button>
+                    <button onclick="zoomSelectRange(10,18)">10–18</button>
+                    <button onclick="zoomSelectAll()">All</button>
+                    <button onclick="zoomSelectNone()">None</button>
                 </div>
             </div>
 

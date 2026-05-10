@@ -18,8 +18,7 @@ const state = {
   dem:    'dtm',
   theme:  'atak-dark',
   exag:   '9',
-  zoomMin: 10,
-  zoomMax: 16,
+  zooms: [10, 11, 12, 13, 14, 15, 16],
 };
 
 // ── Boot ───────────────────────────────────────────────────────────────────
@@ -347,10 +346,6 @@ function findMatchingTile(countyId) {
     const themeMatch = t.theme === state.theme;
     const demMatch   = t.dem   === state.dem;
     const exagMatch  = String(t.exaggeration) === String(state.exag) || state.exag === 'auto';
-    const zoomMatch  =
-      (t.zoom == null) ||
-      (t.zoom[0] <= state.zoomMin && t.zoom[1] >= state.zoomMax) ||
-      (t.zoom[0] === state.zoomMin && t.zoom[1] === state.zoomMax);
     return themeMatch && demMatch && exagMatch;
   }) || null;
 }
@@ -397,6 +392,7 @@ function renderStatusCard() {
     const pmtilesUrl = `${TILES_BASE}/${tile.pmtiles}`;
     const exagLabel = tile.exaggeration ? `${tile.exaggeration}×` : 'auto';
     const zoomLabel = tile.zoom ? `z${tile.zoom[0]}–${tile.zoom[1]}` : '—';
+    const selectedZoomLabel = formatZoomList(state.zooms);
 
     container.innerHTML = `
       <div class="status-header">
@@ -406,7 +402,8 @@ function renderStatusCard() {
         <div class="meta-row"><span class="meta-key">County</span><span class="meta-val">${countyName}</span></div>
         <div class="meta-row"><span class="meta-key">Theme</span><span class="meta-val">${tile.theme}</span></div>
         <div class="meta-row"><span class="meta-key">Exag</span><span class="meta-val">${exagLabel}</span></div>
-        <div class="meta-row"><span class="meta-key">Zoom</span><span class="meta-val">${zoomLabel}</span></div>
+        <div class="meta-row"><span class="meta-key">Tile zoom</span><span class="meta-val">${zoomLabel}</span></div>
+        <div class="meta-row"><span class="meta-key">Selected</span><span class="meta-val">${selectedZoomLabel}</span></div>
         <div class="meta-row"><span class="meta-key">Size</span><span class="meta-val">${sizeStr}</span></div>
         <div class="meta-row"><span class="meta-key">Generated</span><span class="meta-val">${genDate}</span></div>
         <div class="meta-row"><span class="meta-key">Source</span><span class="meta-val">${sourceStr}</span></div>
@@ -498,14 +495,15 @@ function renderInlineJobStatus(job) {
 
 function buildGenerateUrl(countyName) {
   // Build a unique filename from the config
-  const filename = `${state.county}-${state.dem}-${state.theme}-${state.exag}x-z${state.zoomMin}-${state.zoomMax}.yaml`;
+  const zoomStr = formatZoomCompact(state.zooms);
+  const filename = `${state.county}-${state.dem}-${state.theme}-${state.exag}x-z${zoomStr}.yaml`;
 
   const yaml = [
     `county: ${state.county}`,
     `dem: ${state.dem}`,
     `theme: ${state.theme}`,
     `exaggeration: ${state.exag}`,
-    `zoom: "${state.zoomMin}-${state.zoomMax}"`,
+    `zoom: "${formatZoomCompact(state.zooms)}"`,
     `status: pending`,
   ].join('\n');
 
@@ -587,7 +585,7 @@ function showOverlay() {
 
   // Fly to the county
   const center = getCountyCenter();
-  const zoom = Math.max(state.zoomMin || 10, selectorMap.getZoom());
+  const zoom = Math.max(Math.min(...state.zooms) || 10, selectorMap.getZoom());
   if (center) selectorMap.flyTo({ center, zoom, duration: 800 });
 }
 
@@ -665,13 +663,8 @@ function wireControls() {
     updateAvailabilityDots();
   });
 
-  // Zoom inputs
-  document.getElementById('zoom-min').addEventListener('change', (e) => {
-    state.zoomMin = parseInt(e.target.value) || 10;
-  });
-  document.getElementById('zoom-max').addEventListener('change', (e) => {
-    state.zoomMax = parseInt(e.target.value) || 16;
-  });
+  // Zoom chips
+  buildZoomChips();
 }
 
 function syncRadioGroup(groupId, activeVal) {
@@ -689,6 +682,96 @@ function formatSize(mb) {
 
 function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// ── Zoom chip controls ──────────────────────────────────────────────
+const ZOOM_MIN = 0;
+const ZOOM_MAX = 22;
+
+function buildZoomChips() {
+  const container = document.getElementById('zoom-chips');
+  if (!container) return;
+  container.innerHTML = '';
+  for (let z = ZOOM_MIN; z <= ZOOM_MAX; z++) {
+    const chip = document.createElement('div');
+    chip.className = 'zoom-chip' + (state.zooms.includes(z) ? ' active' : '');
+    chip.textContent = z;
+    chip.dataset.zoom = z;
+    chip.addEventListener('click', () => toggleZoom(z));
+    container.appendChild(chip);
+  }
+}
+
+function toggleZoom(z) {
+  const idx = state.zooms.indexOf(z);
+  if (idx >= 0) {
+    state.zooms.splice(idx, 1);
+  } else {
+    state.zooms.push(z);
+    state.zooms.sort((a, b) => a - b);
+  }
+  syncZoomChips();
+}
+
+function syncZoomChips() {
+  document.querySelectorAll('.zoom-chip').forEach(chip => {
+    const z = parseInt(chip.dataset.zoom);
+    chip.classList.toggle('active', state.zooms.includes(z));
+  });
+}
+
+function zoomSelectRange(lo, hi) {
+  state.zooms = [];
+  for (let z = lo; z <= hi; z++) state.zooms.push(z);
+  syncZoomChips();
+}
+
+function zoomSelectAll() {
+  state.zooms = [];
+  for (let z = ZOOM_MIN; z <= ZOOM_MAX; z++) state.zooms.push(z);
+  syncZoomChips();
+}
+
+function zoomSelectNone() {
+  state.zooms = [];
+  syncZoomChips();
+}
+
+function formatZoomList(zooms) {
+  if (!zooms || zooms.length === 0) return '—';
+  const sorted = [...zooms].sort((a, b) => a - b);
+  // Group into contiguous runs
+  const runs = [];
+  let start = sorted[0], prev = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === prev + 1) {
+      prev = sorted[i];
+    } else {
+      runs.push(start === prev ? `z${start}` : `z${start}–${prev}`);
+      start = sorted[i];
+      prev = sorted[i];
+    }
+  }
+  runs.push(start === prev ? `z${start}` : `z${start}–${prev}`);
+  return runs.join(', ');
+}
+
+function formatZoomCompact(zooms) {
+  if (!zooms || zooms.length === 0) return '0';
+  const sorted = [...zooms].sort((a, b) => a - b);
+  const runs = [];
+  let start = sorted[0], prev = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === prev + 1) {
+      prev = sorted[i];
+    } else {
+      runs.push(start === prev ? `${start}` : `${start}-${prev}`);
+      start = sorted[i];
+      prev = sorted[i];
+    }
+  }
+  runs.push(start === prev ? `${start}` : `${start}-${prev}`);
+  return runs.join(',');
 }
 
 // ── Mobile bottom sheet toggle ─────────────────────────────────────────────
