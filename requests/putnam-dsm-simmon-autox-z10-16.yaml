@@ -2,6 +2,7 @@ county: putnam
 dem: dsm
 theme: simmon
 exaggeration: auto
-zoom: "10-16"
-status: pending
-# retrigger with fixed workflow
+zoom: 10-16
+status: completed
+generated_at: '2026-05-10T16:35:15-05:00'
+github_run: https://github.com/emuehlstein/illinois-hillshade-gen/actions/runs/25640400508
