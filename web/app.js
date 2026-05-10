@@ -459,7 +459,7 @@ function toggleOverlay() {
   }
 }
 
-const COUNTY_FILL_LAYERS = ['counties-fill', 'counties-hover', 'counties-selected'];
+const COUNTY_FILL_LAYERS = ['counties-fill', 'counties-hover', 'counties-selected', 'counties-selected-outline'];
 
 function removeOverlay() {
   if (!selectorMap) return;
