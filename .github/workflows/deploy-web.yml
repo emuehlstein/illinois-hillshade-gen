@@ -29,6 +29,8 @@ jobs:
             --cache-control "no-cache" --content-type "application/javascript"
           aws s3 cp web/index.html s3://exaggeratedrelief/index.html \
             --cache-control "no-cache" --content-type "text/html"
+          aws s3 cp web/status.html s3://exaggeratedrelief/status.html \
+            --cache-control "no-cache" --content-type "text/html"
           echo "✅ Web files uploaded to S3"
 
       - name: Invalidate CloudFront cache
@@ -40,7 +42,7 @@ jobs:
             echo "Invalidating CloudFront distribution $DIST_ID..."
             aws cloudfront create-invalidation \
               --distribution-id "$DIST_ID" \
-              --paths "/app.js" "/index.html"
+              --paths "/app.js" "/index.html" "/status.html"
             echo "✅ CloudFront cache invalidated"
           else
             echo "⚠️  No CloudFront distribution found — S3 is authoritative, propagation depends on TTL"

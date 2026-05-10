@@ -130,7 +130,7 @@ jobs:
           echo "🗺️  Generating hillshades for $COUNTY"
 
           # ── Status: init job ──────────────────────────────────────────
-          ::group::Status tracking
+          echo '::group::Status tracking'
           JOB_ID="${COUNTY}-${STYLES}-${EXAGGERATIONS}x-z${ZOOM//[-]/-}"
           python3 -c "
 import sys; sys.path.insert(0, '.')
@@ -139,7 +139,7 @@ t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
 t.init('${JOB_ID}', county='${COUNTY}', theme='${STYLES}', dem='${DEM}', zoom='${ZOOM}', exaggeration='${EXAGGERATIONS}', github_run_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}')
 t.update(status='provisioning', phase='provision_worker', percent=5, message='Launching EC2 worker')
 " || echo '::warning::Status init failed (non-fatal)'
-          ::endgroup::
+          echo '::endgroup::'
           echo "   DEM: $DEM"
           echo "   Styles: $STYLES"
           echo "   Exaggerations: $EXAGGERATIONS"
