@@ -133,12 +133,12 @@ jobs:
           echo '::group::Status tracking'
           JOB_ID="${COUNTY}-${STYLES}-${EXAGGERATIONS}x-z${ZOOM//[-]/-}"
           python3 -c "
-import sys; sys.path.insert(0, '.')
-from ilhmp.status import StatusTracker
-t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
-t.init('${JOB_ID}', county='${COUNTY}', theme='${STYLES}', dem='${DEM}', zoom='${ZOOM}', exaggeration='${EXAGGERATIONS}', github_run_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}')
-t.update(status='provisioning', phase='provision_worker', percent=5, message='Launching EC2 worker')
-" || echo '::warning::Status init failed (non-fatal)'
+          import sys; sys.path.insert(0, '.')
+          from ilhmp.status import StatusTracker
+          t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+          t.init('${JOB_ID}', county='${COUNTY}', theme='${STYLES}', dem='${DEM}', zoom='${ZOOM}', exaggeration='${EXAGGERATIONS}', github_run_url='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          t.update(status='provisioning', phase='provision_worker', percent=5, message='Launching EC2 worker')
+          " || echo '::warning::Status init failed (non-fatal)'
           echo '::endgroup::'
           echo "   DEM: $DEM"
           echo "   Styles: $STYLES"
@@ -206,11 +206,11 @@ t.update(status='provisioning', phase='provision_worker', percent=5, message='La
             
             # ── Status: worker launched ──────────────────────────────────────────
             python3 -c "
-import sys; sys.path.insert(0, '.')
-from ilhmp.status import StatusTracker
-t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
-t.update(status='provisioning', phase='provision_worker', percent=10, message='Worker launched: ${WORKER_INSTANCE_ID} (${WORKER_IP})')
-" || true
+            import sys; sys.path.insert(0, '.')
+            from ilhmp.status import StatusTracker
+            t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+            t.update(status='provisioning', phase='provision_worker', percent=10, message='Worker launched: ${WORKER_INSTANCE_ID} (${WORKER_IP})')
+            " || true
 
             # Write startup manifest to S3 for tracking/cleanup
             RUN_ID="${COUNTY}-$(date +%Y%m%d-%H%M%S)"
@@ -294,11 +294,11 @@ t.update(status='provisioning', phase='provision_worker', percent=10, message='W
               # Rough percent: base 15 (running) + up to 65 more based on iteration
               GEN_PCT=$(( 15 + (ITERATION * 65 / MAX_ITERATIONS) ))
               python3 -c "
-import sys; sys.path.insert(0, '.')
-from ilhmp.status import StatusTracker
-t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
-t.update(status='running', phase='generate_tiles', percent=${GEN_PCT}, message='Generating tiles z${ZOOM} · iteration ${ITERATION}/${MAX_ITERATIONS} · ${MBTILE_COUNT} mbtiles')
-" || true
+              import sys; sys.path.insert(0, '.')
+              from ilhmp.status import StatusTracker
+              t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+              t.update(status='running', phase='generate_tiles', percent=${GEN_PCT}, message='Generating tiles z${ZOOM} · iteration ${ITERATION}/${MAX_ITERATIONS} · ${MBTILE_COUNT} mbtiles')
+              " || true
             fi
 
             # Break if DONE marker found
@@ -376,11 +376,11 @@ t.update(status='running', phase='generate_tiles', percent=${GEN_PCT}, message='
 
           # ── Status: tiles downloaded, starting upload phase ─────────────────────────
           python3 -c "
-import sys; sys.path.insert(0, '.')
-from ilhmp.status import StatusTracker
-t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
-t.update(status='uploading', phase='upload_artifacts', percent=85, message='Uploading ${TILE_COUNT} tile(s) to tile server')
-" || true
+          import sys; sys.path.insert(0, '.')
+          from ilhmp.status import StatusTracker
+          t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+          t.update(status='uploading', phase='upload_artifacts', percent=85, message='Uploading ${TILE_COUNT} tile(s) to tile server')
+          " || true
 
           # Upload success log to S3
           aws s3 cp /tmp/generate-${COUNTY}.log \
@@ -453,11 +453,11 @@ t.update(status='uploading', phase='upload_artifacts', percent=85, message='Uplo
           PMTILES_NAME="${COUNTY}-${STYLES}-${EXAGGERATIONS}x.pmtiles"
           PMTILES_URL="https://exaggeratedrelief.s3.us-east-2.amazonaws.com/tiles/${PMTILES_NAME}"
           python3 -c "
-import sys; sys.path.insert(0, '.')
-from ilhmp.status import StatusTracker
-t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
-t.update(status='uploading', phase='package_pmtiles', percent=90, message='PMTiles published: ${PMTILES_NAME}', pmtiles_url='${PMTILES_URL}')
-" || true
+          import sys; sys.path.insert(0, '.')
+          from ilhmp.status import StatusTracker
+          t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+          t.update(status='uploading', phase='package_pmtiles', percent=90, message='PMTiles published: ${PMTILES_NAME}', pmtiles_url='${PMTILES_URL}')
+          " || true
 
           echo "✅ PMTiles published to exaggeratedrelief.com"
 
@@ -533,11 +533,11 @@ t.update(status='uploading', phase='package_pmtiles', percent=90, message='PMTil
           
           # ── Status: catalog updated ─────────────────────────────────────────
           python3 -c "
-import sys; sys.path.insert(0, '.')
-from ilhmp.status import StatusTracker
-t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
-t.update(status='running', phase='update_catalog', percent=95, message='Catalog updated')
-" || true
+          import sys; sys.path.insert(0, '.')
+          from ilhmp.status import StatusTracker
+          t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+          t.update(status='running', phase='update_catalog', percent=95, message='Catalog updated')
+          " || true
 
           echo "✅ Catalog updated on exaggeratedrelief.com"
       
@@ -611,16 +611,16 @@ t.update(status='running', phase='update_catalog', percent=95, message='Catalog 
           EXAGGERATIONS: ${{ matrix.request.exaggerations }}
         run: |
           python3 -c "
-import sys; sys.path.insert(0, '.')
-try:
-    from ilhmp.status import StatusTracker
-    t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
-    rec = t.fail(
-        phase='generate_tiles',
-        error='GitHub Actions step failed. See run logs for details.',
-        next_action='Check logs at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
-    )
-    t.write_github_summary(rec)
-except Exception as e:
-    print(f'Status fail report failed (non-fatal): {e}')
-" || true
+          import sys; sys.path.insert(0, '.')
+          try:
+              from ilhmp.status import StatusTracker
+              t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
+              rec = t.fail(
+                  phase='generate_tiles',
+                  error='GitHub Actions step failed. See run logs for details.',
+                  next_action='Check logs at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+              )
+              t.write_github_summary(rec)
+          except Exception as e:
+              print(f'Status fail report failed (non-fatal): {e}')
+          " || true
