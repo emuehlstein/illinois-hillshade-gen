@@ -152,11 +152,63 @@ echo "=== Hillshade setup starting at \$(date) ==="
 apt-get update -qq
 apt-get install -y -qq python3-pip python3-venv gdal-bin libgdal-dev python3-gdal python3-numpy sqlite3 wget unzip curl > /dev/null 2>&1
 
-# Install AWS CLI v2 (for S3 uploads)
+# Install AWS CLI v2 (for S3 uploads + CloudWatch)
 curl -sL "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o /tmp/awscliv2.zip
 unzip -q /tmp/awscliv2.zip -d /tmp
 /tmp/aws/install > /dev/null 2>&1
 rm -rf /tmp/aws /tmp/awscliv2.zip
+
+# ── CloudWatch Logs agent ─────────────────────────────────────────────────
+# Streams /var/log/hillshade-gen.log to /ilhmp/hillshade-gen in real time.
+# Requires the instance profile to have logs:CreateLogGroup,
+# logs:CreateLogStream, logs:PutLogEvents on arn:aws:logs:*:*:log-group:/ilhmp/*
+INSTANCE_ID=\$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "unknown")
+REGION="${AWS_REGION}"
+LOG_GROUP="/ilhmp/hillshade-gen"
+LOG_STREAM="${COUNTIES[0]}-\${INSTANCE_ID}"
+
+echo "=== Setting up CloudWatch Logs (stream: \${LOG_STREAM}) ==="
+
+# Install CloudWatch agent
+wget -q https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/arm64/latest/amazon-cloudwatch-agent.deb \
+    -O /tmp/amazon-cloudwatch-agent.deb
+dpkg -i /tmp/amazon-cloudwatch-agent.deb > /dev/null 2>&1 || apt-get install -f -y -qq > /dev/null 2>&1
+rm -f /tmp/amazon-cloudwatch-agent.deb
+
+# Write agent config
+mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << CW_CONFIG
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/hillshade-gen.log",
+            "log_group_name": "\${LOG_GROUP}",
+            "log_stream_name": "\${LOG_STREAM}",
+            "timezone": "UTC",
+            "timestamp_format": "%Y-%m-%d %H:%M:%S",
+            "multi_line_start_pattern": "^==="
+          }
+        ]
+      }
+    },
+    "log_stream_name": "\${LOG_STREAM}",
+    "force_flush_interval": 5
+  }
+}
+CW_CONFIG
+
+# Start the agent
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config \
+    -m ec2 \
+    -s \
+    -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json > /dev/null 2>&1 \
+    && echo "✅ CloudWatch agent started (log stream: \${LOG_STREAM})" \
+    || echo "⚠️  CloudWatch agent failed to start (non-fatal — logs still in /var/log/hillshade-gen.log)"
+# ────────────────────────────────────────────────────────────────────────
 
 python3 -m venv --system-site-packages /opt/ilhmp-venv
 source /opt/ilhmp-venv/bin/activate
@@ -425,6 +477,7 @@ sed -i 's|__ZOOM__|${ZOOM}|g' /opt/run-hillshade.sh
 sed -i "s|__S3_BUCKET__|${S3_BUCKET}|g" /opt/run-hillshade.sh
 sed -i 's|__KEEP_INTERMEDIATES__|${KEEP_INTERMEDIATES}|g' /opt/run-hillshade.sh
 sed -i 's|__TILE_SERVER_HOST__|${TILE_SERVER_PRIVATE_IP:-}|g' /opt/run-hillshade.sh
+
 echo "=== Setup complete, launching worker detached at \$(date) ==="
 nohup /opt/run-hillshade.sh ${STYLES} ${EXAGGERATIONS} ${COUNTY_LIST} &
 CLOUD_INIT

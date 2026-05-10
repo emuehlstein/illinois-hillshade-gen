@@ -185,6 +185,11 @@ jobs:
           if [ -f "/tmp/hillshade-worker-${COUNTY}.env" ]; then
             source /tmp/hillshade-worker-${COUNTY}.env
             echo "Worker: $WORKER_IP ($WORKER_INSTANCE_ID)"
+            echo ""
+            echo "📡 Live logs (CloudWatch):" 
+            echo "   aws logs tail /ilhmp/hillshade-gen --log-stream-name-prefix ${COUNTY}-${WORKER_INSTANCE_ID} --follow --region us-east-2"
+            echo "   (stream name: ${COUNTY}-${WORKER_INSTANCE_ID})"
+            echo ""
             
             # Write startup manifest to S3 for tracking/cleanup
             RUN_ID="${COUNTY}-$(date +%Y%m%d-%H%M%S)"
