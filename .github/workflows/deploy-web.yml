@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'web/**'
+      - 'scripts/ensure_public_status.py'
   workflow_dispatch:
 
 permissions:
@@ -24,23 +25,7 @@ jobs:
           aws-region: us-east-2
 
       - name: Ensure status/ prefix is publicly readable
-        run: |
-          POLICY=$(aws s3api get-bucket-policy --bucket exaggeratedrelief \
-            --query Policy --output text 2>/dev/null || echo '{"Version":"2012-10-17","Statement":[]}')
-          echo "$POLICY" | python3 -c "
-import json,subprocess,sys
-policy=json.loads(sys.stdin.read())
-stmts=policy.get('Statement',[])
-if any('status' in str(s.get('Resource','')) and s.get('Effect')=='Allow' for s in stmts):
-    print('status/* already public'); sys.exit(0)
-stmts.append({'Sid':'PublicReadStatus','Effect':'Allow','Principal':'*',
-              'Action':'s3:GetObject','Resource':'arn:aws:s3:::exaggeratedrelief/status/*'})
-policy['Statement']=stmts
-r=subprocess.run(['aws','s3api','put-bucket-policy','--bucket','exaggeratedrelief',
-                  '--policy',json.dumps(policy)],capture_output=True,text=True)
-if r.returncode==0: print('Added PublicReadStatus to bucket policy')
-else: print(r.stderr,file=sys.stderr); sys.exit(1)
-"
+        run: python3 scripts/ensure_public_status.py
 
       - name: Deploy web files to S3
         run: |
