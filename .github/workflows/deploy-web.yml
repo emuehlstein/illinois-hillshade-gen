@@ -1,0 +1,59 @@
+name: Deploy Web UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Deploy web files to tile server
+        env:
+          TILE_SERVER_SSH: ${{ secrets.TILE_SERVER_SSH }}
+          TILE_SERVER_SSH_KEY: ${{ secrets.TILE_SERVER_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$TILE_SERVER_SSH_KEY" > ~/.ssh/mapserver-ec2.pem
+          chmod 600 ~/.ssh/mapserver-ec2.pem
+
+          # Upload web files
+          scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
+            web/index.html web/app.js \
+            "ubuntu@$(echo $TILE_SERVER_SSH | cut -d@ -f2):/tmp/"
+
+          ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
+            "$TILE_SERVER_SSH" \
+            "sudo cp /tmp/index.html /tmp/app.js /data/www/exaggeratedrelief/ && \
+             sudo chmod 644 /data/www/exaggeratedrelief/index.html /data/www/exaggeratedrelief/app.js && \
+             echo 'Web files deployed'"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          DIST_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?Aliases.Items[0]=='exaggeratedrelief.com'].Id" \
+            --output text 2>/dev/null || echo "")
+          if [ -n "$DIST_ID" ]; then
+            echo "Invalidating CloudFront distribution $DIST_ID..."
+            aws cloudfront create-invalidation \
+              --distribution-id "$DIST_ID" \
+              --paths "/app.js" "/index.html"
+            echo "✅ CloudFront cache invalidated"
+          else
+            echo "⚠️  No CloudFront distribution found for exaggeratedrelief.com"
+          fi
