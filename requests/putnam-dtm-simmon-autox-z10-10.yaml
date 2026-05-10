@@ -1,8 +1,0 @@
-county: putnam
-dem: dtm
-theme: simmon
-exaggeration: auto
-zoom: 10-10
-status: completed
-generated_at: '2026-05-10T10:06:48-05:00'
-github_run: https://github.com/emuehlstein/illinois-hillshade-gen/actions/runs/25632079832

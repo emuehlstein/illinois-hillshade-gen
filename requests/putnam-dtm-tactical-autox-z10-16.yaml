@@ -1,6 +1,6 @@
 county: putnam
 dem: dtm
-theme: simmon
+theme: tactical
 exaggeration: auto
-zoom: "10-10"
+zoom: "10-16"
 status: pending
