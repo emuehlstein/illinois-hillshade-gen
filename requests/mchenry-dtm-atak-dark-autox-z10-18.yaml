@@ -1,8 +1,7 @@
 county: mchenry
 dem: dtm
-theme: atak-dark
-exaggeration: auto
-zoom: "10-18"
 disk: 300
-status: pending
-
+exaggeration: auto
+status: cancelled
+theme: atak-dark
+zoom: 10-18

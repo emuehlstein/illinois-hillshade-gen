@@ -196,7 +196,7 @@ for COUNTY in "\$@"; do
     # On retry, this skips the expensive DEM download + reproject (~20-30 min).
     S3_INTERMEDIATES="s3://__S3_BUCKET__/\${COUNTY}/intermediates"
     echo "🔍 Checking S3 for cached intermediates: \${S3_INTERMEDIATES}/"
-    aws s3 ls "\${S3_INTERMEDIATES}/" 2>/dev/null | awk '{print $4}' | while read KEY; do
+    aws s3 ls "\${S3_INTERMEDIATES}/" 2>/dev/null | awk '{print \$4}' | while read KEY; do
         LOCAL="\${CACHE}/\${KEY}"
         if [[ ! -f "\${LOCAL}" ]]; then
             echo "   ⬇ Pulling \${KEY} from S3..."
@@ -362,7 +362,7 @@ else:
             for INTERMEDIATE in "\${CACHE}/"*.tif; do
                 [[ -f "\${INTERMEDIATE}" ]] || continue
                 IKEY="\$(basename \${INTERMEDIATE})"
-                ALREADY=\$(aws s3 ls "\${S3_INTERMEDIATES}/\${IKEY}" 2>/dev/null | awk '{print $3}' || echo "0")
+                ALREADY=\$(aws s3 ls "\${S3_INTERMEDIATES}/\${IKEY}" 2>/dev/null | awk '{print \$3}' || echo "0")
                 LOCAL_SIZE=\$(stat -f%z "\${INTERMEDIATE}" 2>/dev/null || stat -c%s "\${INTERMEDIATE}" 2>/dev/null || echo "0")
                 if [[ "\${ALREADY:-0}" == "\${LOCAL_SIZE}" ]]; then
                     echo "      ⏩ Already in S3: \${IKEY}"
