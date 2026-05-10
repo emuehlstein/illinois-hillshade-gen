@@ -459,6 +459,8 @@ function toggleOverlay() {
   }
 }
 
+const COUNTY_FILL_LAYERS = ['counties-fill', 'counties-hover', 'counties-selected'];
+
 function removeOverlay() {
   if (!selectorMap) return;
   if (overlayLayerId && selectorMap.getLayer(overlayLayerId)) {
@@ -470,6 +472,12 @@ function removeOverlay() {
   overlayLayerId  = null;
   overlaySourceId = null;
   overlayActive = false;
+  // Restore county fill layers
+  COUNTY_FILL_LAYERS.forEach(id => {
+    if (selectorMap.getLayer(id)) {
+      selectorMap.setLayoutProperty(id, 'visibility', 'visible');
+    }
+  });
 }
 
 function showOverlay() {
@@ -501,6 +509,13 @@ function showOverlay() {
   }
 
   overlayActive = true;
+
+  // Hide county fill layers so they don't obscure the hillshade
+  COUNTY_FILL_LAYERS.forEach(id => {
+    if (selectorMap.getLayer(id)) {
+      selectorMap.setLayoutProperty(id, 'visibility', 'none');
+    }
+  });
 
   // Fly to the county
   const center = getCountyCenter();
