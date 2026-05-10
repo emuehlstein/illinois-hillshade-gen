@@ -51,6 +51,7 @@ jobs:
                   'styles': r.get('theme', ','.join(r.get('styles', ['dark']))),
                   'exaggerations': str(r.get('exaggeration', ','.join(str(e) for e in r.get('exaggerations', [9])))),
                   'zoom': r.get('zoom', '10-16'),
+                  'disk': str(r.get('disk', 200)),
                   'debug': str(r.get('debug', False)).lower(),
                   'request_file': path,
               })
@@ -117,6 +118,7 @@ jobs:
           STYLES: ${{ matrix.request.styles }}
           EXAGGERATIONS: ${{ matrix.request.exaggerations }}
           ZOOM: ${{ matrix.request.zoom }}
+          DISK_GB: ${{ matrix.request.disk }}
           SECURITY_GROUP: ${{ secrets.AWS_SECURITY_GROUP }}
           KEY_PAIR_NAME: ${{ secrets.AWS_KEY_PAIR_NAME }}
           IAM_INSTANCE_PROFILE: ${{ secrets.AWS_IAM_INSTANCE_PROFILE }}
@@ -129,6 +131,19 @@ jobs:
           echo "   Styles: $STYLES"
           echo "   Exaggerations: $EXAGGERATIONS"
           echo "   Zoom: $ZOOM"
+          echo "   Disk: ${DISK_GB}GB"
+          
+          # Pre-flight disk size check
+          # Estimate required disk: DEM download + extraction + hillshade + mbtiles + headroom
+          # For z10-18 McHenry-sized counties, we need ~220GB. Default 200GB is too small.
+          # Warn loudly if disk is likely insufficient for the requested zoom range.
+          ZOOM_MAX=$(echo "$ZOOM" | cut -d'-' -f2)
+          if [ "${ZOOM_MAX:-16}" -ge 17 ] && [ "${DISK_GB:-200}" -lt 250 ]; then
+            echo "⚠️  WARNING: zoom max ${ZOOM_MAX} with ${DISK_GB}GB disk may be insufficient."
+            echo "   Recommended: 300GB for z10-18. Set disk: 300 in request YAML."
+          elif [ "${ZOOM_MAX:-16}" -ge 15 ] && [ "${DISK_GB:-200}" -lt 200 ]; then
+            echo "⚠️  WARNING: zoom max ${ZOOM_MAX} with ${DISK_GB}GB disk may be tight."
+          fi
           
           # Write SSH key
           mkdir -p ~/.ssh
@@ -163,7 +178,8 @@ jobs:
             --dem "$DEM" \
             --style "$STYLES" \
             --exaggeration "$EXAGGERATIONS" \
-            --zoom "$ZOOM" 2>&1 | tee /tmp/generate-${COUNTY}.log
+            --zoom "$ZOOM" \
+            --disk "${DISK_GB:-200}" 2>&1 | tee /tmp/generate-${COUNTY}.log
           
           # Extract worker info
           if [ -f "/tmp/hillshade-worker-${COUNTY}.env" ]; then
@@ -250,6 +266,16 @@ jobs:
             if echo "$PROGRESS" | grep -q "DONE_FOUND"; then
               echo "🎉 Generation complete!"
               break
+            fi
+            
+            # Early abort if disk is critically full (>= 95%) with no mbtiles output yet
+            DISK_PCT=$(echo "$PROGRESS" | grep -oP '\d+(?=% full)' | head -1 || echo "0")
+            if [ "${DISK_PCT:-0}" -ge 95 ] && ! echo "$PROGRESS" | grep -q '1 mbtiles'; then
+              echo "🚨 DISK CRITICAL: ${DISK_PCT}% full with no output mbtiles — aborting early"
+              echo "   This indicates the disk is too small for this county+zoom combination."
+              echo "   Fix: add 'disk: 300' (or higher) to the request YAML and retry."
+              aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" --region us-east-2 || true
+              exit 1
             fi
             
             sleep 120
