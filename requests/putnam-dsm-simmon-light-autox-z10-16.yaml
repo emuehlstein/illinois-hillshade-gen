@@ -2,5 +2,6 @@ county: putnam
 dem: dsm
 theme: simmon-light
 exaggeration: auto
-zoom: "10-16"
-status: pending
+zoom: 10-16
+status: completed
+github_run: https://github.com/emuehlstein/illinois-hillshade-gen/actions/runs/25640400508
