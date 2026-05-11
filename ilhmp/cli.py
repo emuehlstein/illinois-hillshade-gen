@@ -249,13 +249,13 @@ def run(
             console.print(f"[yellow]⏩[/yellow] Using cached: {hs_path}")
 
     # Step 4: Generate tiles
-    min_zoom, max_zoom = map(int, zoom.split("-"))
+    zoom_list = parse_zoom(zoom)
     tiles_dir = output_dir / f"tiles_{style}"
 
     if not json_out:
-        console.print(f"[bold]Step 4/5:[/bold] Generating tiles z{min_zoom}-{max_zoom}...")
+        console.print(f"[bold]Step 4/5:[/bold] Generating tiles z{zoom_str(zoom_list)}...")
     with console.status("[green]Generating tiles...") if not json_out else _nullctx():
-        tile.generate_tiles_direct(hs_path, tiles_dir, min_zoom, max_zoom)
+        tile.generate_tiles_direct(hs_path, tiles_dir, zooms=zoom_list)
     if not json_out:
         console.print(f"[green]✓[/green] Tiles: {tiles_dir}")
 
@@ -284,8 +284,8 @@ def run(
         style=style,
         dem_type=dem.upper(),
         exaggeration=exaggeration,
-        min_zoom=min_zoom,
-        max_zoom=max_zoom,
+        min_zoom=zoom_min(zoom_list),
+        max_zoom=zoom_max(zoom_list),
         center_lat=center_lat,
         center_lon=center_lon,
         tile_format="tiles",
@@ -439,19 +439,19 @@ def tile_cmd(
         console.print(f"[red]File not found: {input_raster}[/red]")
         raise typer.Exit(1)
     
-    min_zoom, max_zoom = map(int, zoom.split("-"))
+    zoom_list = parse_zoom(zoom)
     ext = ".pmtiles" if format == "pmtiles" else ".mbtiles"
     output_path = output or input_raster.with_suffix(ext)
-    
-    console.print(f"[bold]Generating {format} tiles (z{min_zoom}-{max_zoom})...[/bold]")
+
+    console.print(f"[bold]Generating {format} tiles (z{zoom_str(zoom_list)})...[/bold]")
     with console.status(f"[green]Processing..."):
         if format == "pmtiles":
             tmp_mbtiles = output_path.with_suffix(".mbtiles.tmp")
-            tile.generate_mbtiles(input_raster, tmp_mbtiles, min_zoom, max_zoom)
+            tile.generate_mbtiles(input_raster, tmp_mbtiles, zooms=zoom_list)
             tile.convert_to_pmtiles(tmp_mbtiles, output_path)
             tmp_mbtiles.unlink()
         else:
-            tile.generate_mbtiles(input_raster, output_path, min_zoom, max_zoom)
+            tile.generate_mbtiles(input_raster, output_path, zooms=zoom_list)
     
     console.print(f"[green]✓[/green] Saved: {output_path}")
 
@@ -667,3 +667,4 @@ def themes_cmd(
 
 if __name__ == "__main__":
     app()
+
