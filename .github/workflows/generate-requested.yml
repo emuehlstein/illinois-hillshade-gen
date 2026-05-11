@@ -432,12 +432,12 @@ jobs:
           chmod +x /usr/local/bin/pmtiles
           pmtiles --version || echo 'pmtiles installed'
           
-          # Convert each mbtiles to pmtiles
+          # Convert each mbtiles to pmtiles — name from actual mbtiles base, not request aggregate
           mkdir -p /tmp/pmtiles
           for mbtiles in /tmp/tiles/*.mbtiles; do
             if [ -f "$mbtiles" ]; then
               base=$(basename "$mbtiles" .mbtiles)
-              pmname="${COUNTY}-${STYLES}-${EXAGGERATIONS}x.pmtiles"
+              pmname="${base}.pmtiles"
               echo "Converting $base -> $pmname"
               pmtiles convert "$mbtiles" "/tmp/pmtiles/$pmname"
             fi
@@ -453,13 +453,13 @@ jobs:
           done
           
           # ── Status: pmtiles packaged ───────────────────────────────────────────
-          PMTILES_NAME="${COUNTY}-${STYLES}-${EXAGGERATIONS}x.pmtiles"
-          PMTILES_URL="https://exaggeratedrelief.s3.us-east-2.amazonaws.com/tiles/${PMTILES_NAME}"
+          PM_FILES=$(ls /tmp/pmtiles/*.pmtiles 2>/dev/null | xargs -I{} basename {} | tr '\n' ',' | sed 's/,$//')
+          PM_COUNT=$(ls /tmp/pmtiles/*.pmtiles 2>/dev/null | wc -l)
           python3 -c "
           import sys; sys.path.insert(0, '.')
           from ilhmp.status import StatusTracker
           t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
-          t.update(status='uploading', phase='package_pmtiles', percent=90, message='PMTiles published: ${PMTILES_NAME}', pmtiles_url='${PMTILES_URL}')
+          t.update(status='uploading', phase='package_pmtiles', percent=90, message=f'PMTiles published: ${PM_COUNT} file(s): ${PM_FILES}')
           " || true
 
           echo "✅ PMTiles published to exaggeratedrelief.com"
@@ -477,49 +477,73 @@ jobs:
           aws s3 cp s3://exaggeratedrelief/catalog.json /tmp/catalog.json || echo '{}' > /tmp/catalog.json
           
           python3 << 'EOF'
-          import json, os, glob
-          
+          import json, os, glob, re
+
           county = os.environ['COUNTY']
-          styles = os.environ['STYLES']
-          exags = os.environ['EXAGGERATIONS']
           dem = os.environ.get('DEM', 'dtm')
-          
+          zoom_env = os.environ.get('ZOOM', '10-16')
+
           with open('/tmp/catalog.json') as f:
               catalog = json.load(f)
-          
+
           if county not in catalog.get('counties', {}):
               print(f"Warning: {county} not in catalog, skipping")
               exit(0)
-          
-          # Get pmtiles file size
-          pmname = f"{county}-{styles}-{exags}x.pmtiles"
-          pmpath = f"/tmp/pmtiles/{pmname}"
-          size_mb = 0
-          if os.path.exists(pmpath):
+
+          # Parse zoom list from ZOOM env (handles "10-16" and "10-13,15,18")
+          def parse_zoom(z):
+              zooms = set()
+              for part in z.split(','):
+                  part = part.strip()
+                  if '-' in part:
+                      lo, hi = part.split('-', 1)
+                      zooms.update(range(int(lo), int(hi)+1))
+                  elif part:
+                      zooms.add(int(part))
+              return sorted(zooms)
+
+          zoom_list = parse_zoom(zoom_env)
+
+          # One catalog entry per actual pmtiles file
+          new_entries = []
+          for pmpath in sorted(glob.glob('/tmp/pmtiles/*.pmtiles')):
+              pmname = os.path.basename(pmpath)
+              base = pmname[:-len('.pmtiles')]        # e.g. putnam-cool-elevation-autox
               size_mb = int(os.path.getsize(pmpath) / 1024 / 1024)
-          
-          tile_entry = {
-              "id": f"{county}-{styles}-{exags}x",
-              "theme": styles,
-              "dem": dem,
-              "exaggeration": exags,
-              "zoom": [10, 16],
-              "pmtiles": f"tiles/{pmname}",
-              "pmtiles_size_mb": size_mb,
-              "generated_at": os.environ.get('GITHUB_RUN_STARTED_AT', ''),
-          }
-          
-          # Remove existing entry with same id if present
+
+              # Try to extract theme/exag from filename: {county}-{theme}-{exag}
+              # Strip leading "{county}-" and trailing "-{exag}x" or "-autox"
+              inner = base[len(county)+1:] if base.startswith(county+'-') else base
+              exag_match = re.search(r'-(\d+x|autox)$', inner)
+              if exag_match:
+                  theme = inner[:exag_match.start()]
+                  exag = exag_match.group(1)
+              else:
+                  theme = inner
+                  exag = 'auto'
+
+              new_entries.append({
+                  "id": base,
+                  "theme": theme,
+                  "dem": dem,
+                  "exaggeration": exag,
+                  "zooms": zoom_list,
+                  "pmtiles": f"tiles/{pmname}",
+                  "pmtiles_size_mb": size_mb,
+                  "generated_at": os.environ.get('GITHUB_RUN_STARTED_AT', ''),
+              })
+
           tiles = catalog['counties'][county].get('tiles', [])
-          tiles = [t for t in tiles if t.get('id') != tile_entry['id']]
-          tiles.append(tile_entry)
+          new_ids = {e['id'] for e in new_entries}
+          tiles = [t for t in tiles if t.get('id') not in new_ids]
+          tiles.extend(new_entries)
           catalog['counties'][county]['tiles'] = tiles
-          
+
           with open('/tmp/catalog.json', 'w') as f:
               json.dump(catalog, f, indent=2)
-          
+
           total = sum(len(c.get('tiles', [])) for c in catalog['counties'].values())
-          print(f"Catalog updated: {county} now has {len(tiles)} tile(s), {total} total")
+          print(f"Catalog updated: {county} now has {len(tiles)} tile(s) ({len(new_entries)} new/updated), {total} total")
           EOF
           
           aws s3 cp /tmp/catalog.json s3://exaggeratedrelief/catalog.json \
@@ -654,4 +678,5 @@ jobs:
           except Exception as e:
               print(f'Status fail report failed (non-fatal): {e}')
           " || true
+
 
