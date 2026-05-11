@@ -279,19 +279,8 @@ jobs:
             aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" --region us-east-2 2>/dev/null || true
           fi
 
-          # Check S3 for failure log (written by worker before termination)
-          FAILED_LOG=$(aws s3 ls "s3://${S3_BUCKET}/ci/logs/" --region us-east-2 2>/dev/null \
-            | grep "${COUNTY}-failed-" | sort | tail -1 | awk '{print $4}' || true)
-          SUCCESS_LOG=$(aws s3 ls "s3://${S3_BUCKET}/ci/logs/" --region us-east-2 2>/dev/null \
-            | grep "${COUNTY}-success-" | sort | tail -1 | awk '{print $4}' || true)
-
-          if [ -n "$FAILED_LOG" ] && [ "${FAILED_LOG}" \> "${SUCCESS_LOG:-0}" ]; then
-            echo "❌ Worker reported failure — see log:"
-            aws s3 cp "s3://${S3_BUCKET}/ci/logs/${FAILED_LOG}" - --region us-east-2 2>/dev/null || true
-            exit 1
-          fi
-
-          # Pull mbtiles from S3 (already uploaded by worker)
+          # Pull mbtiles from S3 — source of truth is mbtile presence, not log files
+          # (log files may be stale from previous runs)
           echo "📥 Pulling mbtiles from S3..."
           mkdir -p /tmp/tiles
           aws s3 sync "s3://${S3_BUCKET}/${COUNTY}/mbtiles/" /tmp/tiles/ \
@@ -300,6 +289,13 @@ jobs:
           TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
           if [ "$TILE_COUNT" -eq 0 ]; then
             echo "❌ No mbtiles found in S3 at s3://${S3_BUCKET}/${COUNTY}/mbtiles/"
+            # Print most recent failure log for debugging (may be from a prior run)
+            FAILED_LOG=$(aws s3 ls "s3://${S3_BUCKET}/ci/logs/" --region us-east-2 2>/dev/null \
+              | grep "${COUNTY}-failed-" | sort | tail -1 | awk '{print $4}' || true)
+            if [ -n "$FAILED_LOG" ]; then
+              echo "--- most recent failure log (may be from a prior run) ---"
+              aws s3 cp "s3://${S3_BUCKET}/ci/logs/${FAILED_LOG}" - --region us-east-2 2>/dev/null || true
+            fi
             aws s3 cp /tmp/generate-${COUNTY}.log "s3://${S3_BUCKET}/ci/logs/${COUNTY}-failed-$(date +%Y%m%d-%H%M%S).log" 2>/dev/null || true
             exit 1
           fi
@@ -608,6 +604,7 @@ jobs:
           except Exception as e:
               print(f'Status fail report failed (non-fatal): {e}')
           " || true
+
 
 
 
