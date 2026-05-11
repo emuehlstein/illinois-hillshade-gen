@@ -51,6 +51,7 @@ jobs:
                   'styles': r.get('theme', ','.join(r.get('styles', ['dark']))),
                   'exaggerations': str(r.get('exaggeration', ','.join(str(e) for e in r.get('exaggerations', [9])))),
                   'zoom': r.get('zoom', '10-16'),
+                  'zooms': r.get('zooms', None),
                   'disk': str(r.get('disk', 200)),
                   'debug': str(r.get('debug', False)).lower(),
                   'request_file': path,
@@ -118,6 +119,7 @@ jobs:
           STYLES: ${{ matrix.request.styles }}
           EXAGGERATIONS: ${{ matrix.request.exaggerations }}
           ZOOM: ${{ matrix.request.zoom }}
+          ZOOMS: ${{ toJson(matrix.request.zooms) }}
           DISK_GB: ${{ matrix.request.disk }}
           SECURITY_GROUP: ${{ secrets.AWS_SECURITY_GROUP }}
           KEY_PAIR_NAME: ${{ secrets.AWS_KEY_PAIR_NAME }}
@@ -150,7 +152,8 @@ jobs:
           # Estimate required disk: DEM download + extraction + hillshade + mbtiles + headroom
           # For z10-18 McHenry-sized counties, we need ~220GB. Default 200GB is too small.
           # Warn loudly if disk is likely insufficient for the requested zoom range.
-          ZOOM_MAX=$(echo "$ZOOM" | cut -d'-' -f2)
+          # Extract highest zoom from any format (10-16, 10-13,15,18, etc.)
+          ZOOM_MAX=$(echo "$ZOOM" | tr ',' '\n' | tr '-' '\n' | grep -E '^[0-9]+$' | sort -n | tail -1)
           if [ "${ZOOM_MAX:-16}" -ge 17 ] && [ "${DISK_GB:-200}" -lt 250 ]; then
             echo "⚠️  WARNING: zoom max ${ZOOM_MAX} with ${DISK_GB}GB disk may be insufficient."
             echo "   Recommended: 300GB for z10-18. Set disk: 300 in request YAML."
@@ -651,3 +654,4 @@ jobs:
           except Exception as e:
               print(f'Status fail report failed (non-fatal): {e}')
           " || true
+
