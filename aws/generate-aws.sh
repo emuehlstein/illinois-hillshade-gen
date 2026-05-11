@@ -165,7 +165,7 @@ rm -rf /tmp/aws /tmp/awscliv2.zip
 INSTANCE_ID=\$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "unknown")
 REGION="${AWS_REGION}"
 LOG_GROUP="/ilhmp/hillshade-gen"
-LOG_STREAM="${COUNTIES[0]}-\${INSTANCE_ID}"
+LOG_STREAM="__COUNTY__-\${INSTANCE_ID}"
 
 echo "=== Setting up CloudWatch Logs (stream: \${LOG_STREAM}) ==="
 
@@ -475,6 +475,7 @@ sed -i 's|__DEM_UPPER__|${DEM^^}|g' /opt/run-hillshade.sh
 sed -i 's|__DEM__|${DEM}|g' /opt/run-hillshade.sh
 sed -i 's|__ZOOM__|${ZOOM}|g' /opt/run-hillshade.sh
 sed -i "s|__S3_BUCKET__|${S3_BUCKET}|g" /opt/run-hillshade.sh
+sed -i "s|__COUNTY__|${COUNTIES[0]}|g" /opt/run-hillshade.sh
 sed -i 's|__KEEP_INTERMEDIATES__|${KEEP_INTERMEDIATES}|g' /opt/run-hillshade.sh
 sed -i 's|__TILE_SERVER_HOST__|${TILE_SERVER_PRIVATE_IP:-}|g' /opt/run-hillshade.sh
 
@@ -540,3 +541,4 @@ echo "Instance info saved to /tmp/hillshade-worker-${COUNTIES[0]}.env"
 echo ""
 echo "To pull results and upload to tile server when done:"
 echo "   ./pull-aws-tiles.sh ${COUNTIES[0]}"
+
