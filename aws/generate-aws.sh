@@ -475,6 +475,19 @@ find /data/output -name "*.mbtiles" -exec ls -lh {} \;
 # Signal completion
 touch /data/output/DONE
 echo "=== DONE at \$(date) ==="
+
+# Self-terminate to signal GH Actions runner we are done
+echo "=== Self-terminating instance ==="
+IMDS_TOKEN=\$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
+    -H "X-aws-ec2-metadata-token-ttl-seconds: 60" --max-time 5 2>/dev/null || true)
+SELF_ID=\$(curl -s -H "X-aws-ec2-metadata-token: \${IMDS_TOKEN}" \
+    http://169.254.169.254/latest/meta-data/instance-id --max-time 5 2>/dev/null || true)
+SELF_AZ=\$(curl -s -H "X-aws-ec2-metadata-token: \${IMDS_TOKEN}" \
+    http://169.254.169.254/latest/meta-data/placement/availability-zone --max-time 5 2>/dev/null || true)
+SELF_REGION="\${SELF_AZ%?}"  # e.g. us-east-2a → us-east-2
+if [ -n "\${SELF_ID}" ]; then
+    aws ec2 terminate-instances --instance-ids "\${SELF_ID}" --region "\${SELF_REGION}" 2>/dev/null || true
+fi
 WORKER_SCRIPT
 
 chmod +x /opt/run-hillshade.sh
@@ -553,6 +566,7 @@ echo "Instance info saved to /tmp/hillshade-worker-${COUNTIES[0]}.env"
 echo ""
 echo "To pull results and upload to tile server when done:"
 echo "   ./pull-aws-tiles.sh ${COUNTIES[0]}"
+
 
 
 
