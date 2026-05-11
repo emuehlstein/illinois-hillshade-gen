@@ -134,6 +134,30 @@ def run(
     output_dir = output or Path(f"./{county.lower()}-hillshade")
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # ── Status tracking (auto-enabled when JOB_ID + STATUS_BUCKET env vars set) ──
+    _tracker: _StatusTracker | None = None
+    _cache_info: dict = {}
+    _status_bucket = _os.environ.get("STATUS_BUCKET") or _os.environ.get("S3_BUCKET")
+    _job_id        = _os.environ.get("JOB_ID")
+    _run_id        = _os.environ.get("GITHUB_RUN_ID")
+    if _job_id and _status_bucket:
+        _tracker = _StatusTracker(bucket=_status_bucket, run_id=_run_id)
+        _tracker._job_id = _job_id
+
+    def _phase(phase: str, percent: int, message: str, **extra) -> None:
+        """Fire-and-forget status update; never raises."""
+        if _tracker is None:
+            return
+        try:
+            _tracker.update(
+                status="running", phase=phase,
+                percent=percent, message=message,
+                cache_info=dict(_cache_info), **extra,
+            )
+        except Exception as _e:
+            if not json_out:
+                console.print(f"[dim]⚠️  Status update failed: {_e}[/dim]")
+
     # For S3 cache dirs, intermediates still go to local output_dir
     # The Cache class handles S3 push/pull transparently
     if cache_dir and not str(cache_dir).startswith("s3://"):
@@ -175,29 +199,39 @@ def run(
     # Step 1: Acquire DEM
     dem_path = intermediates_dir / f"{county.lower()}_{dem.lower()}.tif"
     if source:
-        # Use provided GeoTIFF directly — no download or extraction needed
         dem_path = source
+        _cache_info["dem"] = "source"
+        _phase("download_dem", 10, f"Using provided source: {dem_path.name}")
         if not json_out:
             console.print(f"[yellow]⏩[/yellow] Using source: {dem_path}")
     elif dem_path.exists():
+        _cache_info["dem"] = "local_cache"
+        _phase("download_dem", 20, f"DEM cache hit (local): {dem_path.name}")
         if not json_out:
             console.print(f"[yellow]⏩[/yellow] Using cached: {dem_path}")
     elif source_zip:
+        _phase("download_dem", 10, f"Extracting DEM from local ZIP: {source_zip.name}")
         if not json_out:
             console.print("[bold]Step 1/5:[/bold] Extracting from local ZIP...")
         download.extract_local_zip(source_zip, dem_path)
+        _cache_info["dem"] = "local_zip"
+        _phase("download_dem", 20, f"DEM extracted: {dem_path.name}")
         if not json_out:
             console.print(f"[green]✓[/green] Extracted: {dem_path}")
     else:
+        _phase("download_dem", 10, f"Downloading {dem.upper()} DEM for {county}")
         if not json_out:
             console.print("[bold]Step 1/5:[/bold] Downloading elevation data...")
         download.download_county(county, dem, dem_path)
+        _cache_info["dem"] = "downloaded"
+        _phase("download_dem", 20, f"DEM downloaded: {dem_path.name}")
         if not json_out:
             console.print(f"[green]✓[/green] Downloaded: {dem_path}")
 
     # Step 2: Reproject to WGS84
     dem_4326 = intermediates_dir / f"{county.lower()}_{dem.lower()}_4326.tif"
     if not dem_4326.exists():
+        _phase("build_mosaic", 25, f"Reprojecting {dem.upper()} DEM to WGS84")
         if not json_out:
             console.print("[bold]Step 2/5:[/bold] Reprojecting to WGS84...")
         with console.status("[green]Reprojecting...") if not json_out else _nullctx():
@@ -205,15 +239,20 @@ def run(
                 dem_path, dem_4326,
                 cache_dir=cache_dir,
             )
+        _cache_info["dem_4326"] = "computed"
+        _phase("build_mosaic", 35, f"Reprojected: {dem_4326.name}")
         if not json_out:
             console.print(f"[green]✓[/green] Reprojected: {dem_4326}")
     else:
+        _cache_info["dem_4326"] = "local_cache"
+        _phase("build_mosaic", 35, f"Reproject cache hit: {dem_4326.name}")
         if not json_out:
             console.print(f"[yellow]⏩[/yellow] Using cached: {dem_4326}")
 
     # Resolve exaggeration (may be 'auto')
     if exaggeration.lower() == "auto":
         exag_float = compute_auto_exaggeration(dem_4326)
+        _cache_info["exaggeration"] = f"auto→{exag_float:.2f}"
         if not json_out:
             console.print(f"[dim]Auto-exaggeration computed: {exag_float:.2f}[/dim]")
     else:
@@ -226,6 +265,7 @@ def run(
     # Step 3: Hillshade
     hs_path = intermediates_dir / f"{county.lower()}_hillshade_{style}_z{exag_float}_{shading_mode.value}.tif"
     if not hs_path.exists() or force_recompute:
+        _phase("render_hillshade", 40, f"Rendering {style} hillshade ({exag_float:.2f}x {shading_mode.value})")
         if not json_out:
             console.print(f"[bold]Step 3/5:[/bold] Generating {style} hillshade...")
         with console.status("[green]Generating hillshade...") if not json_out else _nullctx():
@@ -242,9 +282,13 @@ def run(
                 legacy=legacy,
                 aspect_blend=aspect_blend or 0.0,
             )
+        _cache_info["hillshade"] = "computed"
+        _phase("render_hillshade", 60, f"Hillshade rendered: {hs_path.name}")
         if not json_out:
             console.print(f"[green]✓[/green] Hillshade: {hs_path}")
     else:
+        _cache_info["hillshade"] = "local_cache"
+        _phase("render_hillshade", 60, f"Hillshade cache hit: {hs_path.name}")
         if not json_out:
             console.print(f"[yellow]⏩[/yellow] Using cached: {hs_path}")
 
@@ -252,10 +296,12 @@ def run(
     zoom_list = parse_zoom(zoom)
     tiles_dir = output_dir / f"tiles_{style}"
 
+    _phase("generate_tiles", 65, f"Generating tiles z{zoom_str(zoom_list)}")
     if not json_out:
         console.print(f"[bold]Step 4/5:[/bold] Generating tiles z{zoom_str(zoom_list)}...")
     with console.status("[green]Generating tiles...") if not json_out else _nullctx():
         tile.generate_tiles_direct(hs_path, tiles_dir, zooms=zoom_list)
+    _phase("generate_tiles", 80, f"Tiles generated: z{zoom_str(zoom_list)}")
     if not json_out:
         console.print(f"[green]✓[/green] Tiles: {tiles_dir}")
 
@@ -297,10 +343,12 @@ def run(
 
     # MBTiles (always generated)
     mbtiles_path = output_dir / f"{county.lower()}-hillshade-{style}.mbtiles"
+    _phase("package_mbtiles", 85, f"Packing MBTiles: {mbtiles_path.name}")
     if not json_out:
         console.print(f"[dim]Packing MBTiles...[/dim]")
     with console.status("[green]Packing MBTiles...") if not json_out else _nullctx():
         tile.generate_mbtiles_from_dir(tiles_dir, mbtiles_path)
+    _phase("package_mbtiles", 90, f"MBTiles packed: {mbtiles_path.stat().st_size // 1_048_576}MB")
     if not json_out:
         console.print(f"[green]✓[/green] MBTiles: {mbtiles_path}")
 
@@ -667,4 +715,5 @@ def themes_cmd(
 
 if __name__ == "__main__":
     app()
+
 
