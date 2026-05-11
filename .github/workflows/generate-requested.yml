@@ -242,130 +242,69 @@ jobs:
             exit 1
           fi
           
-          # Wait for SSH to be ready (key already at ~/.ssh/mapserver-ec2.pem)
-          echo "⏳ Waiting for SSH access..."
-          for i in {1..30}; do
-            if ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
-                ubuntu@$WORKER_IP 'echo ready' 2>/dev/null; then
-              echo "✅ SSH ready"
-              break
-            fi
-            sleep 10
-          done
-          
-          # Wait for worker to finish (poll every 2 min, max 2 hours)
-          echo "⏳ Waiting for worker to complete generation..."
-          MAX_ITERATIONS=60
+          # Poll for worker self-termination (worker terminates itself when done)
+          # Progress visible via CloudWatch: aws logs tail /ilhmp/hillshade-gen --log-stream-name-prefix ${COUNTY}-${WORKER_INSTANCE_ID} --follow
+          echo "⏳ Waiting for worker to complete (polling EC2 state every 30s, max 90 min)..."
+          MAX_ITERATIONS=180
           ITERATION=0
-          
+
           while [ $ITERATION -lt $MAX_ITERATIONS ]; do
             ITERATION=$((ITERATION + 1))
-            
-            # Check if worker still exists
+
             WORKER_STATE=$(aws ec2 describe-instances \
               --instance-ids "$WORKER_INSTANCE_ID" \
               --query 'Reservations[0].Instances[0].State.Name' \
-              --output text 2>/dev/null || echo "terminated")
-            
-            if [ "$WORKER_STATE" = "terminated" ]; then
-              echo "✅ Worker terminated (generation complete or failed)"
-              break
-            fi
-            
-            # Collect progress stats via SSH
-            echo "[$ITERATION/$MAX_ITERATIONS] Worker state: $WORKER_STATE"
-            
-            PROGRESS=$(ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$WORKER_IP '
-              df -h /data | tail -1 | awk '"'"'{printf "   💾 Disk: %s (%s full)\n", $3, $5}'"'"'
-              uptime | awk -F"load average:" '"'"'{print "   🖥️  CPU load:" $2}'"'"' | cut -d, -f1
-              echo "   📦 Output: $(find /data/output -name "*.mbtiles" 2>/dev/null | wc -l) mbtiles ($(du -sh /data/output 2>/dev/null | cut -f1 || echo 0))"
-              if [ -f /var/log/hillshade-gen.log ]; then
-                echo "   📋 Latest: $(tail -1 /var/log/hillshade-gen.log 2>/dev/null | cut -c1-80)"
-              fi
-              [ -f /data/output/DONE ] && echo "DONE_FOUND"
-            ' 2>/dev/null || echo "   (SSH failed)")
-            
-            echo "$PROGRESS"
+              --output text --region us-east-2 2>/dev/null || echo "terminated")
 
-            # ── Status: periodic update during polling ─────────────────────────────────
-            if [ $((ITERATION % 10)) -eq 0 ]; then
-              MBTILE_COUNT=$(echo "$PROGRESS" | grep -oP '\d+ mbtiles' | grep -oP '\d+' | head -1 || echo 0)
-              # Rough percent: base 15 (running) + up to 65 more based on iteration
-              GEN_PCT=$(( 15 + (ITERATION * 65 / MAX_ITERATIONS) ))
-              python3 -c "import sys; sys.path.insert(0, '.'); from ilhmp.status import StatusTracker; t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}'); t.update(status='running', phase='generate_tiles', percent=${GEN_PCT}, message='Generating tiles z${ZOOM} · iteration ${ITERATION}/${MAX_ITERATIONS} · ${MBTILE_COUNT} mbtiles')" || true
+            # S3 progress check (every 5 iterations)
+            if [ $((ITERATION % 5)) -eq 0 ]; then
+              MBTILE_COUNT=$(aws s3 ls "s3://${S3_BUCKET}/${COUNTY}/mbtiles/" --region us-east-2 2>/dev/null | grep -c '\.mbtiles' || echo 0)
+              GEN_PCT=$(( 15 + (ITERATION * 50 / MAX_ITERATIONS) ))
+              echo "[$ITERATION/$MAX_ITERATIONS] Worker: $WORKER_STATE | S3 mbtiles: $MBTILE_COUNT"
+              python3 -c "import sys; sys.path.insert(0, '.'); from ilhmp.status import StatusTracker; t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}'); t.update(status='running', phase='generate_tiles', percent=${GEN_PCT}, message='Worker ${WORKER_STATE} · ${MBTILE_COUNT} mbtiles in S3 · iteration ${ITERATION}/${MAX_ITERATIONS}')" || true
+            else
+              echo "[$ITERATION/$MAX_ITERATIONS] Worker: $WORKER_STATE"
             fi
 
-            # Break if DONE marker found
-            if echo "$PROGRESS" | grep -q "DONE_FOUND"; then
-              echo "🎉 Generation complete!"
+            if [ "$WORKER_STATE" = "terminated" ] || [ "$WORKER_STATE" = "shutting-down" ]; then
+              echo "✅ Worker terminated — generation complete"
               break
             fi
-            
-            # Early abort if disk is critically full (>= 95%) with no mbtiles output yet
-            DISK_PCT=$(echo "$PROGRESS" | grep -oP '\d+(?=% full)' | head -1 || echo "0")
-            if [ "${DISK_PCT:-0}" -ge 95 ] && ! echo "$PROGRESS" | grep -q '1 mbtiles'; then
-              echo "🚨 DISK CRITICAL: ${DISK_PCT}% full with no output mbtiles — aborting early"
-              echo "   This indicates the disk is too small for this county+zoom combination."
-              echo "   Fix: add 'disk: 300' (or higher) to the request YAML and retry."
-              aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" --region us-east-2 || true
-              exit 1
-            fi
-            
-            sleep 120
+
+            sleep 30
           done
-          
+
           if [ $ITERATION -ge $MAX_ITERATIONS ]; then
-            echo "⚠️  Timeout after 2 hours"
-            if [ "$DEBUG_KEEP_ALIVE" = "true" ]; then
-              echo "🔧 DEBUG: Keeping worker alive for troubleshooting"
-              echo "   SSH: ssh -i ~/.ssh/mapserver-ec2.pem ubuntu@$WORKER_IP"
-            else
-              echo "Terminating worker..."
-              aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" --region us-east-2 || true
-            fi
+            echo "⚠️  Timeout after 90 min — terminating worker"
+            aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" --region us-east-2 2>/dev/null || true
           fi
-          
-          # Download tiles from worker via SCP
-          echo "📥 Downloading tiles from worker..."
-          mkdir -p /tmp/tiles
-          
-          # List what's on the worker
-          ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no ubuntu@$WORKER_IP \
-            'find /data/output -name "*.mbtiles" -exec ls -lh {} \;' 2>/dev/null || true
-          
-          # SCP all mbtiles
-          scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
-            "ubuntu@$WORKER_IP:/data/output/${COUNTY}/*/*.mbtiles" /tmp/tiles/ 2>&1 || true
-          
-          TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
-          if [ "$TILE_COUNT" -eq 0 ]; then
-            echo "❌ No tiles found on worker"
-            # Try broader search
-            scp -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no \
-              "ubuntu@$WORKER_IP:/data/output/*.mbtiles" /tmp/tiles/ 2>&1 || true
-            TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
-          fi
-          
-          if [ "$TILE_COUNT" -eq 0 ]; then
-            echo "❌ Still no tiles found. Checking worker output structure:"
-            ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no ubuntu@$WORKER_IP \
-              'find /data/output -type f 2>/dev/null | head -30' || true
-            # Grab full worker logs for debugging
-            ssh -i ~/.ssh/mapserver-ec2.pem -o StrictHostKeyChecking=no ubuntu@$WORKER_IP \
-              'cat /var/log/hillshade-gen.log 2>/dev/null' > /tmp/worker-hillshade-gen.log 2>/dev/null || true
-            aws s3 cp /tmp/generate-${COUNTY}.log s3://$S3_BUCKET/ci/logs/${COUNTY}-failed-$(date +%Y%m%d-%H%M%S).log || true
-            aws s3 cp /tmp/worker-hillshade-gen.log s3://$S3_BUCKET/ci/logs/${COUNTY}-worker-$(date +%Y%m%d-%H%M%S).log 2>/dev/null || true
-            if [ "$DEBUG_KEEP_ALIVE" = "true" ]; then
-              echo "🔧 DEBUG: Worker kept alive at $WORKER_IP for troubleshooting"
-              echo "   ssh -i ~/.ssh/mapserver-ec2.pem ubuntu@$WORKER_IP"
-              echo "   ⚠️  Terminate when done: aws ec2 terminate-instances --instance-ids $WORKER_INSTANCE_ID --region us-east-2"
-            else
-              aws ec2 terminate-instances --instance-ids "$WORKER_INSTANCE_ID" --region us-east-2 || true
-            fi
+
+          # Check S3 for failure log (written by worker before termination)
+          FAILED_LOG=$(aws s3 ls "s3://${S3_BUCKET}/ci/logs/" --region us-east-2 2>/dev/null \
+            | grep "${COUNTY}-failed-" | sort | tail -1 | awk '{print $4}' || true)
+          SUCCESS_LOG=$(aws s3 ls "s3://${S3_BUCKET}/ci/logs/" --region us-east-2 2>/dev/null \
+            | grep "${COUNTY}-success-" | sort | tail -1 | awk '{print $4}' || true)
+
+          if [ -n "$FAILED_LOG" ] && [ "${FAILED_LOG}" \> "${SUCCESS_LOG:-0}" ]; then
+            echo "❌ Worker reported failure — see log:"
+            aws s3 cp "s3://${S3_BUCKET}/ci/logs/${FAILED_LOG}" - --region us-east-2 2>/dev/null || true
             exit 1
           fi
-          
-          echo "✅ Downloaded $TILE_COUNT tile(s):"
+
+          # Pull mbtiles from S3 (already uploaded by worker)
+          echo "📥 Pulling mbtiles from S3..."
+          mkdir -p /tmp/tiles
+          aws s3 sync "s3://${S3_BUCKET}/${COUNTY}/mbtiles/" /tmp/tiles/ \
+            --region us-east-2 --include "*.mbtiles" 2>&1
+
+          TILE_COUNT=$(ls /tmp/tiles/*.mbtiles 2>/dev/null | wc -l)
+          if [ "$TILE_COUNT" -eq 0 ]; then
+            echo "❌ No mbtiles found in S3 at s3://${S3_BUCKET}/${COUNTY}/mbtiles/"
+            aws s3 cp /tmp/generate-${COUNTY}.log "s3://${S3_BUCKET}/ci/logs/${COUNTY}-failed-$(date +%Y%m%d-%H%M%S).log" 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "✅ Pulled $TILE_COUNT tile(s) from S3:"
           ls -lh /tmp/tiles/
 
           # ── Status: tiles downloaded, starting upload phase ─────────────────────────
@@ -669,6 +608,7 @@ jobs:
           except Exception as e:
               print(f'Status fail report failed (non-fatal): {e}')
           " || true
+
 
 
 
