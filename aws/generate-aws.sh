@@ -228,6 +228,9 @@ export TMPDIR=/data/tmp
 mkdir -p /data/tmp
 source /opt/ilhmp-venv/bin/activate
 
+# Status tracking — baked in at launch time from GitHub Actions env
+ILHMP_GITHUB_RUN_ID="__GITHUB_RUN_ID__"
+
 # Args: <styles-csv> <exaggerations-csv> <county> [county...]
 STYLES_CSV="\$1"; shift
 EXAGG_CSV="\$1"; shift
@@ -292,6 +295,11 @@ for COUNTY in "\$@"; do
             elif [[ "\${STYLE}" == *-* ]] || [[ "\${STYLE}" == "simmon" ]] || [[ "\${STYLE}" == "grayscale" ]]; then
                 STYLE_FLAG="--theme"
             fi
+
+            # Export per-combo status env vars so ilhmp run can write phase markers
+            export JOB_ID="\${COUNTY}-\${STYLE}-\${EXAGG}x-z__ZOOM__"
+            export STATUS_BUCKET="exaggeratedrelief"
+            export GITHUB_RUN_ID="\${ILHMP_GITHUB_RUN_ID}"
 
             ilhmp run "\${COUNTY}" \
                 --dem "__DEM__" \
@@ -478,6 +486,7 @@ sed -i 's|__ZOOM__|${ZOOM}|g' /opt/run-hillshade.sh
 sed -i "s|__S3_BUCKET__|${S3_BUCKET}|g" /opt/run-hillshade.sh
 sed -i "s|__COUNTY__|${COUNTIES[0]}|g" /opt/run-hillshade.sh
 sed -i 's|__KEEP_INTERMEDIATES__|${KEEP_INTERMEDIATES}|g' /opt/run-hillshade.sh
+sed -i "s|__GITHUB_RUN_ID__|${GITHUB_RUN_ID:-}|g" /opt/run-hillshade.sh
 sed -i 's|__TILE_SERVER_HOST__|${TILE_SERVER_PRIVATE_IP:-}|g' /opt/run-hillshade.sh
 
 echo "=== Setup complete, launching worker detached at \$(date) ==="
@@ -544,6 +553,7 @@ echo "Instance info saved to /tmp/hillshade-worker-${COUNTIES[0]}.env"
 echo ""
 echo "To pull results and upload to tile server when done:"
 echo "   ./pull-aws-tiles.sh ${COUNTIES[0]}"
+
 
 
 
