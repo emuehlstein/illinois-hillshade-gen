@@ -129,6 +129,7 @@ jobs:
           WORKER_INSTANCE_TYPE: c7g.2xlarge
           DEBUG_KEEP_ALIVE: ${{ github.event.inputs.debug || 'false' }}
         run: |
+          pip install -e . -q
           echo "🗺️  Generating hillshades for $COUNTY"
 
           # ── Status: init job ──────────────────────────────────────────
@@ -668,6 +669,7 @@ jobs:
           except Exception as e:
               print(f'Status fail report failed (non-fatal): {e}')
           " || true
+
 
 
 
