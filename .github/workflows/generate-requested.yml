@@ -208,12 +208,7 @@ jobs:
             echo ""
             
             # ── Status: worker launched ──────────────────────────────────────────
-            python3 -c "
-            import sys; sys.path.insert(0, '.')
-            from ilhmp.status import StatusTracker
-            t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
-            t.update(status='provisioning', phase='provision_worker', percent=10, message='Worker launched: ${WORKER_INSTANCE_ID} (${WORKER_IP})')
-            " || true
+            python3 -c "import sys; sys.path.insert(0, '.'); from ilhmp.status import StatusTracker; t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}'); t.update(status='provisioning', phase='provision_worker', percent=10, message='Worker launched: ${WORKER_INSTANCE_ID} (${WORKER_IP})')" || true
 
             # Write startup manifest to S3 for tracking/cleanup
             RUN_ID="${COUNTY}-$(date +%Y%m%d-%H%M%S)"
@@ -296,12 +291,7 @@ jobs:
               MBTILE_COUNT=$(echo "$PROGRESS" | grep -oP '\d+ mbtiles' | grep -oP '\d+' | head -1 || echo 0)
               # Rough percent: base 15 (running) + up to 65 more based on iteration
               GEN_PCT=$(( 15 + (ITERATION * 65 / MAX_ITERATIONS) ))
-              python3 -c "
-              import sys; sys.path.insert(0, '.')
-              from ilhmp.status import StatusTracker
-              t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}')
-              t.update(status='running', phase='generate_tiles', percent=${GEN_PCT}, message='Generating tiles z${ZOOM} · iteration ${ITERATION}/${MAX_ITERATIONS} · ${MBTILE_COUNT} mbtiles')
-              " || true
+              python3 -c "import sys; sys.path.insert(0, '.'); from ilhmp.status import StatusTracker; t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}'); t.update(status='running', phase='generate_tiles', percent=${GEN_PCT}, message='Generating tiles z${ZOOM} · iteration ${ITERATION}/${MAX_ITERATIONS} · ${MBTILE_COUNT} mbtiles')" || true
             fi
 
             # Break if DONE marker found
@@ -678,5 +668,6 @@ jobs:
           except Exception as e:
               print(f'Status fail report failed (non-fatal): {e}')
           " || true
+
 
 
