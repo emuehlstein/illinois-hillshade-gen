@@ -2,6 +2,8 @@ county: putnam
 dem: dtm
 theme: vivid-elevation
 exaggeration: auto
-zoom: "10-16"
-status: pending
+zoom: 10-16
+status: completed
 disk: 400
+generated_at: '2026-05-11T08:49:56-05:00'
+github_run: https://github.com/emuehlstein/illinois-hillshade-gen/actions/runs/25674312704
