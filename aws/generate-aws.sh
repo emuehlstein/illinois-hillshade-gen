@@ -476,7 +476,6 @@ sed -i 's|__DEM__|${DEM}|g' /opt/run-hillshade.sh
 sed -i 's|__ZOOM__|${ZOOM}|g' /opt/run-hillshade.sh
 sed -i "s|__S3_BUCKET__|${S3_BUCKET}|g" /opt/run-hillshade.sh
 sed -i "s|__COUNTY__|${COUNTIES[0]}|g" /opt/run-hillshade.sh
-USERDATA="${USERDATA//__COUNTY__/${COUNTIES[0]}}"
 sed -i 's|__KEEP_INTERMEDIATES__|${KEEP_INTERMEDIATES}|g' /opt/run-hillshade.sh
 sed -i 's|__TILE_SERVER_HOST__|${TILE_SERVER_PRIVATE_IP:-}|g' /opt/run-hillshade.sh
 
@@ -484,6 +483,7 @@ echo "=== Setup complete, launching worker detached at \$(date) ==="
 nohup /opt/run-hillshade.sh ${STYLES} ${EXAGGERATIONS} ${COUNTY_LIST} &
 CLOUD_INIT
 )
+USERDATA="${USERDATA//__COUNTY__/${COUNTIES[0]}}"
 
 # Launch instance
 SPOT_ARGS=()
@@ -543,5 +543,6 @@ echo "Instance info saved to /tmp/hillshade-worker-${COUNTIES[0]}.env"
 echo ""
 echo "To pull results and upload to tile server when done:"
 echo "   ./pull-aws-tiles.sh ${COUNTIES[0]}"
+
 
 
