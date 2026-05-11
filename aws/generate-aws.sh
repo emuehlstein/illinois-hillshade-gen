@@ -476,6 +476,7 @@ sed -i 's|__DEM__|${DEM}|g' /opt/run-hillshade.sh
 sed -i 's|__ZOOM__|${ZOOM}|g' /opt/run-hillshade.sh
 sed -i "s|__S3_BUCKET__|${S3_BUCKET}|g" /opt/run-hillshade.sh
 sed -i "s|__COUNTY__|${COUNTIES[0]}|g" /opt/run-hillshade.sh
+USERDATA="${USERDATA//__COUNTY__/${COUNTIES[0]}}"
 sed -i 's|__KEEP_INTERMEDIATES__|${KEEP_INTERMEDIATES}|g' /opt/run-hillshade.sh
 sed -i 's|__TILE_SERVER_HOST__|${TILE_SERVER_PRIVATE_IP:-}|g' /opt/run-hillshade.sh
 
@@ -501,6 +502,7 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --block-device-mappings "[{\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":${DISK_GB},\"VolumeType\":\"gp3\",\"DeleteOnTermination\":true}}]" \
     "${SPOT_ARGS[@]}" \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=hillshade-worker-${COUNTIES[0]}},{Key=Purpose,Value=hillshade-generation},{Key=AutoTerminate,Value=true}]" \
+    --iam-instance-profile "Name=${IAM_INSTANCE_PROFILE}" \
     --user-data "$USERDATA" \
     --query 'Instances[0].InstanceId' \
     --output text)
@@ -541,4 +543,5 @@ echo "Instance info saved to /tmp/hillshade-worker-${COUNTIES[0]}.env"
 echo ""
 echo "To pull results and upload to tile server when done:"
 echo "   ./pull-aws-tiles.sh ${COUNTIES[0]}"
+
 
