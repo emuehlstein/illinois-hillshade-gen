@@ -162,7 +162,8 @@ rm -rf /tmp/aws /tmp/awscliv2.zip
 # Streams /var/log/hillshade-gen.log to /ilhmp/hillshade-gen in real time.
 # Requires the instance profile to have logs:CreateLogGroup,
 # logs:CreateLogStream, logs:PutLogEvents on arn:aws:logs:*:*:log-group:/ilhmp/*
-INSTANCE_ID=\$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "unknown")
+IMDS_TOKEN=\$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60" --max-time 5 2>/dev/null || echo "")
+INSTANCE_ID=\$(curl -s --max-time 5 -H "X-aws-ec2-metadata-token: \${IMDS_TOKEN}" http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "unknown")
 REGION="${AWS_REGION}"
 LOG_GROUP="/ilhmp/hillshade-gen"
 LOG_STREAM="__COUNTY__-\${INSTANCE_ID}"
@@ -543,6 +544,7 @@ echo "Instance info saved to /tmp/hillshade-worker-${COUNTIES[0]}.env"
 echo ""
 echo "To pull results and upload to tile server when done:"
 echo "   ./pull-aws-tiles.sh ${COUNTIES[0]}"
+
 
 
 
