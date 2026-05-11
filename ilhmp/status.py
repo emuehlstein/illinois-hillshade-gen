@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 from datetime import datetime, timezone
+from .zoom_utils import parse_zoom, zoom_str
 from pathlib import Path
 from typing import Optional
 
@@ -38,11 +39,14 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _zoom_list(zoom_str: str) -> list:
-    """Parse '10-16' → [10,11,12,13,14,15,16]."""
+def _zoom_list(zoom) -> list:
+    """Parse zoom string or list → sorted list of ints.
+
+    Handles contiguous ("10-16"), discontinuous ("10-13,15,18"),
+    and pre-parsed lists ([10, 11, 12, 13, 15, 18]).
+    """
     try:
-        lo, hi = zoom_str.split("-")
-        return list(range(int(lo), int(hi) + 1))
+        return parse_zoom(zoom)
     except Exception:
         return []
 
@@ -158,7 +162,7 @@ class StatusTracker:
         county: str,
         theme: str,
         dem: str = "dtm",
-        zoom: str = "10-16",
+        zoom = "10-16",
         exaggeration: str = "auto",
         github_run_url: Optional[str] = None,
     ) -> dict:
@@ -171,7 +175,8 @@ class StatusTracker:
             "theme": theme,
             "dem": dem,
             "exaggeration": exaggeration,
-            "zoom": zoom,
+            "zooms": _zoom_list(zoom),
+            "zoom": zoom_str(_zoom_list(zoom)),
             "zooms_requested": _zoom_list(zoom),
             "zooms_completed": [],
             "status": "queued",
@@ -397,3 +402,4 @@ def update_status_index():
 
 def write_github_summary(status: dict):
     _default_tracker().write_github_summary(record=status)
+
