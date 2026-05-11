@@ -239,6 +239,36 @@ _register(Theme(
     tags=["legacy", "v1"],
 ))
 
+# Vivid — punchy saturated elevation palette for maximum feature contrast
+_register(Theme(
+    name="vivid",
+    description="Punchy saturated blue→green→orange→red hillshade for maximum feature contrast. "
+                "Strong color differentiation reveals subtle terrain changes. "
+                "Composite shading with aspect depth cues.",
+    ramp="vivid",
+    shading="composite",
+    composite_weights=(0.5, 0.3, 0.2),
+    aspect_blend=0.14,
+    exaggeration="auto",
+    terrain_type="auto",
+    tags=["vivid", "saturated", "dark"],
+))
+
+# Cool — desaturated blue-grey, professional cartographic aesthetic
+_register(Theme(
+    name="cool",
+    description="Desaturated blue-grey hillshade with a clean cartographic feel. "
+                "Subdued palette that works well as a base layer or standalone. "
+                "Composite shading with subtle aspect cues.",
+    ramp="cool",
+    shading="composite",
+    composite_weights=(0.5, 0.3, 0.2),
+    aspect_blend=0.10,
+    exaggeration="auto",
+    terrain_type="auto",
+    tags=["cool", "cartographic", "desaturated"],
+))
+
 # Grayscale — no color, pure hillshade
 _register(Theme(
     name="grayscale",
