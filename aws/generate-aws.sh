@@ -526,7 +526,7 @@ INSTANCE_ID=$(aws ec2 run-instances \
     "${SPOT_ARGS[@]}" \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=hillshade-worker-${COUNTIES[0]}},{Key=Purpose,Value=hillshade-generation},{Key=AutoTerminate,Value=true}]" \
     --iam-instance-profile "Name=${IAM_INSTANCE_PROFILE}" \
-    --user-data "$USERDATA" \
+    --user-data "$(printf '%s' "$USERDATA" | gzip -9 | base64 -w 0)" \
     --query 'Instances[0].InstanceId' \
     --output text)
 
