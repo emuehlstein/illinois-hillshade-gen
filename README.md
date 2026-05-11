@@ -33,10 +33,26 @@ Themes are named presets that capture color ramp, shading mode, exaggeration, an
 | **`mountain`** | composite (70/20/10) | blue-grey | 2× | Steep terrain (Rockies, Alps) |
 | **`lidar-urban`** | composite (50/30/20) | blue-grey | 6× | 1m LiDAR in cities |
 | **`lidar-natural`** | composite (60/30/10) | blue-grey | 9× | 1m LiDAR in rural areas |
+| **`vivid`** | composite (50/30/20) | blue→green→orange→red | auto | Maximum feature contrast |
+| **`cool`** | composite (50/30/20) | blue-grey desaturated | auto | Professional cartographic |
+| **`vivid-elevation`** | composite (50/30/20) | vivid by height | auto | Elevation-mapped vivid |
+| **`cool-elevation`** | composite (50/30/20) | blue-grey by height | auto | Elevation-mapped cartographic |
 | **`tactical`** | multidirectional | olive drab | auto | Military-style maps |
 | **`terrain`** | multidirectional | earth tones | auto | Topographic map style |
 | **`grayscale`** | multidirectional | pure grey | auto | Base layer for custom coloring |
 | **`classic`** | standard (315°) | tint blend | 3× | Legacy v1 behavior |
+
+### Color Modes
+
+Themes use one of three color modes:
+
+| Mode | Description |
+|------|-------------|
+| **`ramp`** (default) | Maps hillshade brightness (0–255) to color. Shadows get one color, highlights another. |
+| **`elevation`** | Maps DEM elevation to color, then modulates by hillshade for 3D effect. Ramp files use `0%`–`100%` notation that auto-scales to the DEM’s actual range. |
+| **`tint`** | Legacy v1 single-color blend. |
+
+Use `--color-mode elevation` or pick an elevation theme (`vivid-elevation`, `cool-elevation`).
 
 ### Theme Details
 
