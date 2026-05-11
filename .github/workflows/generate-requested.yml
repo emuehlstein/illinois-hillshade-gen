@@ -258,7 +258,7 @@ jobs:
 
             # S3 progress check (every 5 iterations)
             if [ $((ITERATION % 5)) -eq 0 ]; then
-              MBTILE_COUNT=$(aws s3 ls "s3://${S3_BUCKET}/${COUNTY}/mbtiles/" --region us-east-2 2>/dev/null | grep -c '\.mbtiles' || echo 0)
+              MBTILE_COUNT=$(aws s3 ls "s3://${S3_BUCKET}/${COUNTY}/mbtiles/" --region us-east-2 2>/dev/null | grep -E '\.mbtiles$' | wc -l | xargs)
               GEN_PCT=$(( 15 + (ITERATION * 50 / MAX_ITERATIONS) ))
               echo "[$ITERATION/$MAX_ITERATIONS] Worker: $WORKER_STATE | S3 mbtiles: $MBTILE_COUNT"
               python3 -c "import sys; sys.path.insert(0, '.'); from ilhmp.status import StatusTracker; t = StatusTracker('exaggeratedrelief', '${{ github.run_id }}'); t.update(status='running', phase='generate_tiles', percent=${GEN_PCT}, message='Worker ${WORKER_STATE} · ${MBTILE_COUNT} mbtiles in S3 · iteration ${ITERATION}/${MAX_ITERATIONS}')" || true
@@ -608,6 +608,7 @@ jobs:
           except Exception as e:
               print(f'Status fail report failed (non-fatal): {e}')
           " || true
+
 
 
 
