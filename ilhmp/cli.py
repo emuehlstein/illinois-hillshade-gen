@@ -20,6 +20,7 @@ from rich.console import Console
 
 from . import download, hillshade, tile, counties, viewer, layers as layers_mod, reproject as reproject_mod
 from .hillshade import ShadingMode
+from .status import StatusTracker as _StatusTracker
 from .auto_exag import compute_auto_exaggeration
 from . import themes as themes_mod
 
@@ -716,6 +717,7 @@ def themes_cmd(
 
 if __name__ == "__main__":
     app()
+
 
 
 
