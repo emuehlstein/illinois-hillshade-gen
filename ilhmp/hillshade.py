@@ -94,7 +94,9 @@ def generate(
         cache_dir: Directory to cache intermediate grayscale hillshade TIFs.
         force_recompute: Ignore any cached grayscale TIF and regenerate it.
         shading_mode: Shading algorithm (default MULTIDIRECTIONAL).
-        color_mode: 'ramp' (default, uses gdaldem color-relief) or 'tint' (legacy blend).
+        color_mode: 'ramp' (default, uses gdaldem color-relief on hillshade),
+            'tint' (legacy blend), or 'elevation' (color-relief on DEM,
+            modulated by hillshade for 3D effect).
         composite_weights: (multi, igor, combined) weights for COMPOSITE mode.
             Defaults to (0.6, 0.3, 0.1).
         ramp_file: Path to a custom GDAL color-relief ramp file. Defaults to
@@ -127,8 +129,8 @@ def generate(
     else:
         tint = bg = None
 
-    # Resolve ramp file (needed for ramp color_mode)
-    if color_mode == "ramp" and ramp_file is None:
+    # Resolve ramp file (needed for ramp and elevation color_mode)
+    if color_mode in ("ramp", "elevation") and ramp_file is None:
         candidate = _RAMPS_DIR / f"{style}.txt"
         if candidate.exists():
             ramp_file = candidate
@@ -172,7 +174,12 @@ def generate(
                     shutil.copy2(gray_path, gray_cache)
                     gray_path = gray_cache
 
-        if color_mode == "ramp":
+        if color_mode == "elevation":
+            _apply_elevation_color(
+                input_dem, gray_path, output_path, ramp_file,
+                aspect_blend=aspect_blend,
+            )
+        elif color_mode == "ramp":
             generate_color_relief(gray_path, output_path, ramp_file)
         else:
             _apply_color_tint(gray_path, output_path, tint, bg)
@@ -345,6 +352,142 @@ def _generate_composite(
         raise RuntimeError(f"gdal_calc.py (composite) failed: {result.stderr}")
 
     return composite_path
+
+
+def _apply_elevation_color(
+    input_dem: Path,
+    gray_path: Path,
+    output_path: Path,
+    ramp_file: Path,
+    aspect_blend: float = 0.0,
+    gamma: float = 0.75,
+    chunk_size: int = 1000,
+) -> None:
+    """
+    Elevation-mapped color mode: apply color-relief to the DEM based on actual
+    elevation, then modulate by the grayscale hillshade for 3D effect.
+
+    Ramp files can use percentage notation (0%, 50%, 100%) which are auto-scaled
+    to the DEM's actual min/max, or absolute elevation values.
+
+    The hillshade is gamma-adjusted and multiplied into the elevation colors
+    so that shadows darken the color and highlights brighten it.
+    """
+    if not HAS_GDAL_PYTHON:
+        raise RuntimeError("Elevation color mode requires GDAL Python bindings")
+
+    input_dem = Path(input_dem)
+    gray_path = Path(gray_path)
+
+    # Read ramp file and resolve percentage values if needed
+    ramp_lines = Path(ramp_file).read_text().strip().splitlines()
+    has_percentages = any("%" in line.split()[0] for line in ramp_lines
+                         if line.strip() and not line.strip().startswith("nv"))
+
+    if has_percentages:
+        # Get DEM min/max for scaling
+        dem_ds = gdal.Open(str(input_dem))
+        dem_band = dem_ds.GetRasterBand(1)
+        dem_stats = dem_band.ComputeStatistics(False)  # min, max, mean, stddev
+        dem_min, dem_max = dem_stats[0], dem_stats[1]
+        dem_ds = None
+
+        # Rewrite ramp with absolute values
+        resolved_lines = []
+        for line in ramp_lines:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split()
+            if parts[0] == "nv":
+                resolved_lines.append(line)
+            elif "%" in parts[0]:
+                pct = float(parts[0].replace("%", "")) / 100.0
+                elev = dem_min + pct * (dem_max - dem_min)
+                resolved_lines.append(f"{elev:.2f} {' '.join(parts[1:])}")
+            else:
+                resolved_lines.append(line)
+
+        # Write temporary resolved ramp
+        resolved_ramp = Path(str(ramp_file) + ".resolved.tmp")
+        resolved_ramp.write_text("\n".join(resolved_lines) + "\n")
+    else:
+        resolved_ramp = Path(ramp_file)
+
+    try:
+        # Step 1: color-relief on the DEM
+        with tempfile.NamedTemporaryFile(suffix=".tif", delete=False) as tmp:
+            elev_color_path = Path(tmp.name)
+
+        cmd = [
+            "gdaldem", "color-relief",
+            str(input_dem), str(resolved_ramp), str(elev_color_path),
+            "-alpha",
+            "-co", "COMPRESS=LZW",
+            "-co", "TILED=YES",
+            "-co", "BIGTIFF=YES",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"gdaldem color-relief (elevation) failed: {result.stderr}")
+
+        # Step 2: modulate elevation colors by hillshade
+        gray_ds = gdal.Open(str(gray_path))
+        color_ds = gdal.Open(str(elev_color_path))
+        xsize = gray_ds.RasterXSize
+        ysize = gray_ds.RasterYSize
+
+        driver = gdal.GetDriverByName("GTiff")
+        out_ds = driver.Create(
+            str(output_path), xsize, ysize, 4, gdal.GDT_Byte,
+            ["COMPRESS=DEFLATE", "TILED=YES", "BIGTIFF=YES"],
+        )
+        out_ds.SetProjection(gray_ds.GetProjection())
+        out_ds.SetGeoTransform(gray_ds.GetGeoTransform())
+
+        gray_band = gray_ds.GetRasterBand(1)
+        r_band = color_ds.GetRasterBand(1)
+        g_band = color_ds.GetRasterBand(2)
+        b_band = color_ds.GetRasterBand(3)
+        a_band = color_ds.GetRasterBand(4) if color_ds.RasterCount >= 4 else None
+
+        for y0 in range(0, ysize, chunk_size):
+            rows = min(chunk_size, ysize - y0)
+            hs = gray_band.ReadAsArray(0, y0, xsize, rows).astype(np.float32)
+            r = r_band.ReadAsArray(0, y0, xsize, rows).astype(np.float32)
+            g = g_band.ReadAsArray(0, y0, xsize, rows).astype(np.float32)
+            b = b_band.ReadAsArray(0, y0, xsize, rows).astype(np.float32)
+
+            # Gamma-adjusted hillshade as illumination factor
+            hs_norm = np.power(np.clip(hs / 255.0, 0.001, 1.0), gamma)
+
+            # Modulate
+            r_out = np.clip(r * hs_norm, 0, 255).astype(np.uint8)
+            g_out = np.clip(g * hs_norm, 0, 255).astype(np.uint8)
+            b_out = np.clip(b * hs_norm, 0, 255).astype(np.uint8)
+
+            # Alpha: opaque where hillshade > 0
+            if a_band is not None:
+                a = a_band.ReadAsArray(0, y0, xsize, rows)
+            else:
+                a = np.where(hs > 0, 255, 0).astype(np.uint8)
+
+            out_ds.GetRasterBand(1).WriteArray(r_out, 0, y0)
+            out_ds.GetRasterBand(2).WriteArray(g_out, 0, y0)
+            out_ds.GetRasterBand(3).WriteArray(b_out, 0, y0)
+            out_ds.GetRasterBand(4).WriteArray(a, 0, y0)
+
+        out_ds.FlushCache()
+        out_ds = None
+        gray_ds = None
+        color_ds = None
+
+    finally:
+        # Clean up temp files
+        if has_percentages and resolved_ramp.exists():
+            resolved_ramp.unlink()
+        if elev_color_path.exists():
+            elev_color_path.unlink()
 
 
 def generate_color_relief(

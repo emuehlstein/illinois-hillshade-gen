@@ -38,7 +38,8 @@ class Theme:
     
     # Color
     ramp: str = "dark"              # Name of ramp file (dark, light, tactical, terrain, gray)
-    color_mode: str = "ramp"        # 'ramp' (gdaldem color-relief) or 'tint' (v1 legacy)
+    color_mode: str = "ramp"        # 'ramp' (color-relief on hillshade), 'tint' (v1 legacy),
+                                    # or 'elevation' (color-relief on DEM, modulated by hillshade)
     
     # Shading
     shading: str = "multidirectional"  # standard, multidirectional, combined, igor, composite
@@ -267,6 +268,37 @@ _register(Theme(
     exaggeration="auto",
     terrain_type="auto",
     tags=["cool", "cartographic", "desaturated"],
+))
+
+# Vivid Elevation — elevation-mapped version of vivid
+_register(Theme(
+    name="vivid-elevation",
+    description="Elevation-mapped vivid colors: blue (low) → green → orange → red (high). "
+                "Colors represent actual terrain height, modulated by hillshade for 3D effect. "
+                "Ramp auto-scales to the DEM's elevation range.",
+    ramp="vivid-elev",
+    color_mode="elevation",
+    shading="composite",
+    composite_weights=(0.5, 0.3, 0.2),
+    aspect_blend=0.14,
+    exaggeration="auto",
+    terrain_type="auto",
+    tags=["vivid", "elevation", "dark"],
+))
+
+# Cool Elevation — elevation-mapped version of cool
+_register(Theme(
+    name="cool-elevation",
+    description="Elevation-mapped cool blue-grey: deeper blue (low) → muted grey (high). "
+                "Cartographic feel with colors tied to actual terrain height.",
+    ramp="cool-elev",
+    color_mode="elevation",
+    shading="composite",
+    composite_weights=(0.5, 0.3, 0.2),
+    aspect_blend=0.10,
+    exaggeration="auto",
+    terrain_type="auto",
+    tags=["cool", "elevation", "cartographic"],
 ))
 
 # Grayscale — no color, pure hillshade

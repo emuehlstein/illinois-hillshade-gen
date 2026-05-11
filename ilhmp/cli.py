@@ -71,7 +71,7 @@ def run(
     json_out: bool = typer.Option(False, "--json", help="Output structured JSON instead of Rich text"),
     force_recompute: bool = typer.Option(False, "--force-recompute", help="Bypass the grayscale hillshade cache and recompute from scratch."),
     shading: Optional[str] = typer.Option(None, "--shading", help="Shading mode: standard, multidirectional, combined, igor, composite"),
-    color_mode: Optional[str] = typer.Option(None, "--color-mode", help="Color mode: tint (legacy) or ramp (default)"),
+    color_mode: Optional[str] = typer.Option(None, "--color-mode", help="Color mode: ramp (default), tint (legacy), or elevation (color DEM by height)"),
     composite_weights: Optional[str] = typer.Option(None, "--composite-weights", help="Composite weights as 'multi,igor,combined' (e.g. '0.6,0.3,0.1')"),
     ramp: Optional[Path] = typer.Option(None, "--ramp", help="Custom GDAL color-relief ramp file"),
     aspect_blend: Optional[float] = typer.Option(None, "--aspect-blend", help="Aspect overlay blend weight (0.0-1.0). Adds depth cues from slope direction."),
