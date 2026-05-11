@@ -11,6 +11,7 @@ Usage:
 """
 
 import json
+import os as _os
 import subprocess
 import typer
 from typing import Optional
@@ -715,5 +716,6 @@ def themes_cmd(
 
 if __name__ == "__main__":
     app()
+
 
 
