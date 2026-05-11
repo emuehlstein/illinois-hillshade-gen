@@ -212,7 +212,7 @@ CW_CONFIG
 
 python3 -m venv --system-site-packages /opt/ilhmp-venv
 source /opt/ilhmp-venv/bin/activate
-pip install -q 'numpy<2' Pillow git+https://github.com/emuehlstein/illinois-hillshade-gen.git@v2-simmon mbutil
+pip install -q 'numpy<2' Pillow git+https://github.com/emuehlstein/illinois-hillshade-gen.git@main mbutil
 
 mkdir -p /data/output /data/tmp
 export TMPDIR=/data/tmp
