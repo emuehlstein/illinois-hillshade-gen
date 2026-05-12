@@ -114,6 +114,9 @@ def serve_tiles(
         serve_dir = tiles_path.parent
         MBTilesHandler.mbtiles_path = tiles_path
         handler = MBTilesHandler
+    elif tiles_path.is_dir():
+        serve_dir = tiles_path
+        handler = http.server.SimpleHTTPRequestHandler
     else:
         serve_dir = tiles_path.parent
         handler = http.server.SimpleHTTPRequestHandler
