@@ -226,8 +226,11 @@
                 if (!yNums.length) return null;
                 const yMin = Math.min(...yNums), yMax = Math.max(...yNums);
                 const tile2lon = (x, z) => x / Math.pow(2, z) * 360 - 180;
-                const tile2lat = (y, z) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / Math.pow(2, z)))) * 180 / Math.PI;
-                return [[tile2lat(yMax + 1, z), tile2lon(xMin, z)], [tile2lat(yMin, z), tile2lon(xMax + 1, z)]];
+                // Convert TMS y → XYZ y before computing lat (TMS Y is flipped)
+                const tms2lat = (yTms, z) => { const yXyz = Math.pow(2, z) - 1 - yTms; return Math.atan(Math.sinh(Math.PI * (1 - 2 * yXyz / Math.pow(2, z)))) * 180 / Math.PI; };
+                const south = tms2lat(yMin, z);  // lowest TMS y = southernmost
+                const north = tms2lat(yMax, z);  // highest TMS y = northernmost
+                return [[Math.min(south,north), tile2lon(xMin, z)], [Math.max(south,north), tile2lon(xMax + 1, z)]];
             } catch(e) { return null; }
         }
 
@@ -246,7 +249,7 @@
                 opacity: 0.8,
                 maxZoom: config.maxZoom,
                 minZoom: config.minZoom,
-                tms: false
+                tms: true  // tiles generated with gdal2tiles --tms (Y origin at south)
             });
         } else if (config.format === 'mbtiles') {
             hillshadeLayer = L.tileLayer(config.tilesPath + '/{z}/{x}/{y}.png', {
