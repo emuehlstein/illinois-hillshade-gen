@@ -322,7 +322,21 @@ def run(
     except Exception:
         geojson_path = None
 
-    bounds = county_info.get("bounds", (-89.5, 40.0, -88.0, 42.5))
+    # Derive bounds from actual raster when --source is used (source DEM may not be in the named county)
+    _raster_bounds = None
+    if source and dem_4326.exists():
+        try:
+            import subprocess as _sp, json as _json
+            _gi = _sp.run(["gdalinfo", "-json", str(dem_4326)], capture_output=True, text=True, check=True)
+            _gi_data = _json.loads(_gi.stdout)
+            _wgs = _gi_data.get("wgs84Extent", {}).get("coordinates", [[]])[0]
+            if _wgs:
+                _lons = [p[0] for p in _wgs]
+                _lats = [p[1] for p in _wgs]
+                _raster_bounds = (min(_lons), min(_lats), max(_lons), max(_lats))
+        except Exception:
+            pass
+    bounds = _raster_bounds or county_info.get("bounds", (-89.5, 40.0, -88.0, 42.5))
     center_lon = (bounds[0] + bounds[2]) / 2
     center_lat = (bounds[1] + bounds[3]) / 2
 
