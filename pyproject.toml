@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ilhmp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Download Illinois ILHMP elevation data and generate styled hillshade tiles"
 readme = "README.md"
 license = {text = "MIT"}
