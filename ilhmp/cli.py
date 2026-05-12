@@ -326,14 +326,17 @@ def run(
     _raster_bounds = None
     if source and dem_4326.exists():
         try:
-            import subprocess as _sp, json as _json
-            _gi = _sp.run(["gdalinfo", "-json", str(dem_4326)], capture_output=True, text=True, check=True)
-            _gi_data = _json.loads(_gi.stdout)
-            _wgs = _gi_data.get("wgs84Extent", {}).get("coordinates", [[]])[0]
-            if _wgs:
-                _lons = [p[0] for p in _wgs]
-                _lats = [p[1] for p in _wgs]
-                _raster_bounds = (min(_lons), min(_lats), max(_lons), max(_lats))
+            from osgeo import gdal as _gdal
+            _ds = _gdal.Open(str(dem_4326))
+            if _ds:
+                _gt = _ds.GetGeoTransform()
+                _w, _h = _ds.RasterXSize, _ds.RasterYSize
+                _minx = _gt[0]
+                _maxy = _gt[3]
+                _maxx = _gt[0] + _gt[1] * _w
+                _miny = _gt[3] + _gt[5] * _h
+                _raster_bounds = (min(_minx, _maxx), min(_miny, _maxy), max(_minx, _maxx), max(_miny, _maxy))
+                _ds = None
         except Exception:
             pass
     bounds = _raster_bounds or county_info.get("bounds", (-89.5, 40.0, -88.0, 42.5))
