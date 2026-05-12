@@ -207,7 +207,35 @@
             map.fitBounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]], { padding: [20, 20] });
         }
         
-        loadBoundary();
+        // Detect actual tile bounds from directory listing (handles --source DEMs outside the named county)
+        async function detectTileBounds() {
+            try {
+                const z = config.minZoom;
+                const zRes = await fetch(`${config.tilesPath}/${z}/`);
+                if (!zRes.ok) return null;
+                const zHtml = await zRes.text();
+                const xNums = [...zHtml.matchAll(/href="(\d+)\//g)].map(m => parseInt(m[1]));
+                if (!xNums.length) return null;
+                const xMin = Math.min(...xNums), xMax = Math.max(...xNums);
+                // sample y from middle x for robustness
+                const xMid = xNums[Math.floor(xNums.length / 2)];
+                const xRes = await fetch(`${config.tilesPath}/${z}/${xMid}/`);
+                if (!xRes.ok) return null;
+                const xHtml = await xRes.text();
+                const yNums = [...xHtml.matchAll(/href="(\d+)\.png/g)].map(m => parseInt(m[1]));
+                if (!yNums.length) return null;
+                const yMin = Math.min(...yNums), yMax = Math.max(...yNums);
+                const tile2lon = (x, z) => x / Math.pow(2, z) * 360 - 180;
+                const tile2lat = (y, z) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / Math.pow(2, z)))) * 180 / Math.PI;
+                return [[tile2lat(yMax + 1, z), tile2lon(xMin, z)], [tile2lat(yMin, z), tile2lon(xMax + 1, z)]];
+            } catch(e) { return null; }
+        }
+
+        loadBoundary().then(() => {
+            detectTileBounds().then(tileBounds => {
+                if (tileBounds) map.fitBounds(tileBounds, { padding: [20, 20] });
+            });
+        });
         
         // Hillshade layer
         let hillshadeLayer;
