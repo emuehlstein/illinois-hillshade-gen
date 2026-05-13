@@ -68,9 +68,9 @@ def reproject_to_4326(input_path: Path, output_path: Path) -> Path:
 def run(
     county: str = typer.Argument(..., help="County name (e.g., 'putnam', 'cook')"),
     dem: str = typer.Option("dtm", "--dem", "-d", help="DEM type: dtm or dsm"),
-    theme: Optional[str] = typer.Option(None, "--theme", "-t", help="Named theme preset (overrides style/shading/exaggeration). Run 'ilhmp themes' to list."),
+    theme: Optional[str] = typer.Option("cool-elevation", "--theme", "-t", help="Named theme preset (overrides style/shading/exaggeration). Run 'ilhmp themes' to list."),
     style: Optional[str] = typer.Option(None, "--style", "-s", help="Color style: dark, light, tactical, terrain, gray"),
-    exaggeration: Optional[str] = typer.Option(None, "--exaggeration", "-z", help="Vertical exaggeration factor or 'auto'"),
+    exaggeration: Optional[str] = typer.Option("9", "--exaggeration", "-z", help="Vertical exaggeration factor or 'auto'"),
     zoom: Optional[str] = typer.Option(None, "--zoom", help="Zoom range (e.g., '10-16')"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
     cache_dir: Optional[str] = typer.Option(None, "--cache-dir", help="Local path or s3:// URI for intermediate file caching."),

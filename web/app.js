@@ -16,7 +16,7 @@ let overlaySourceId = null;
 const state = {
   county: null,   // ilhmp_id string, e.g. "cook"
   dem:    'dtm',
-  theme:  'atak-dark',
+  theme:  'cool-elevation',
   exag:   '9',
   zooms: [10, 11, 12, 13, 14, 15, 16],
 };
@@ -264,8 +264,18 @@ function selectCounty(countyId, featureId) {
   renderStatusCard();
   updateAvailabilityDots();
 
-  // Remove tile overlay when switching county
+  // Remove old overlay, then auto-show if a tile is available
   removeOverlay();
+  // Auto-load the best available tile — no "Show on Map" click needed
+  const autoTile = findMatchingTile(countyId) || findBestTile(countyId);
+  if (autoTile) {
+    // Slight delay so the status card renders first
+    setTimeout(() => {
+      showOverlay();
+      const btn = document.getElementById('btn-preview');
+      if (btn) { btn.textContent = '✕ Hide Map'; btn.classList.add('btn-active'); }
+    }, 50);
+  }
 }
 
 function getFeatureIdForCounty(countyId) {
@@ -665,6 +675,11 @@ function wireControls() {
 
   // Zoom chips
   buildZoomChips();
+
+  // Sync all radio groups to initial state (so UI matches state defaults)
+  syncRadioGroup('dem-group', state.dem);
+  syncRadioGroup('theme-group', state.theme);
+  syncRadioGroup('exag-group', state.exag);
 }
 
 function syncRadioGroup(groupId, activeVal) {
