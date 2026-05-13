@@ -30,7 +30,14 @@ app = typer.Typer(
     help="Download Illinois ILHMP elevation data and generate styled hillshade tiles",
     add_completion=False,
 )
-console = Console()
+console = Console(highlight=False)
+
+# Suppress BrokenPipeError so piped runs (e.g. | tee) exit 0 on success
+import signal as _signal
+try:
+    _signal.signal(_signal.SIGPIPE, _signal.SIG_DFL)
+except AttributeError:
+    pass  # Windows has no SIGPIPE
 
 
 class _nullctx:
