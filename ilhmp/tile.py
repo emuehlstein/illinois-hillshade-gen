@@ -2,10 +2,23 @@
 Tile generation for MBTiles and PMTiles output.
 """
 
+import os
 import subprocess
 import tempfile
 import shutil
 from pathlib import Path
+
+
+def _find_tool(name: str) -> str:
+    """Resolve a CLI tool by name, falling back to /opt/homebrew/bin for macOS."""
+    found = shutil.which(name)
+    if found:
+        return found
+    # Homebrew installs here but it may not be in PATH in all execution contexts
+    homebrew_path = f"/opt/homebrew/bin/{name}"
+    if os.path.isfile(homebrew_path):
+        return homebrew_path
+    return name  # last resort: let subprocess raise a clean error
 
 from .zoom_utils import parse_zoom, zoom_segments, ZoomInput
 
@@ -40,10 +53,12 @@ def generate_tiles_direct(
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    gdal2tiles_bin = _find_tool("gdal2tiles.py")
+
     # gdal2tiles only supports contiguous ranges; run once per segment
     for seg_lo, seg_hi in zoom_segments(zoom_list):
         cmd = [
-            "gdal2tiles.py",
+            gdal2tiles_bin,
             "-z", f"{seg_lo}-{seg_hi}",
             "-w", "none",
             "--tms",
@@ -100,8 +115,9 @@ def generate_mbtiles_from_dir(
     if output_path.exists():
         output_path.unlink()
 
+    mb_util_bin = _find_tool("mb-util")
     cmd = [
-        "mb-util",
+        mb_util_bin,
         "--scheme=tms",
         str(tiles_dir),
         str(output_path),
@@ -146,8 +162,9 @@ def convert_to_pmtiles(
     if output_path.exists():
         output_path.unlink()
 
+    pmtiles_bin = _find_tool("pmtiles")
     cmd = [
-        "pmtiles", "convert",
+        pmtiles_bin, "convert",
         str(input_mbtiles),
         str(output_path),
     ]

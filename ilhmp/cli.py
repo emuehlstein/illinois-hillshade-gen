@@ -134,6 +134,10 @@ def run(
         print(json.dumps({"error": msg})) if json_out else console.print(f"[red]{msg}[/red]")
         raise typer.Exit(1)
 
+    # Build a run-slug used for default output dir and all output file names:
+    # {county}-{theme_or_style}-z{zoom_str}  e.g. putnam-flat-terrain-z9-16
+    _run_label = theme if theme else style
+    # zoom is resolved after theme defaults are applied; build slug lazily below
     output_dir = output or Path(f"./{county.lower()}-hillshade")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -297,7 +301,18 @@ def run(
 
     # Step 4: Generate tiles
     zoom_list = parse_zoom(zoom)
-    tiles_dir = output_dir / f"tiles_{style}"
+    _zoom_slug = zoom_str(zoom_list).replace(",", "_")  # e.g. "9-16" or "9-13_15"
+    _run_slug = f"{_run_label}-z{_zoom_slug}"  # e.g. flat-terrain-z9-16
+    # If --output was not given, rename the default dir to include the run slug
+    if output is None:
+        new_output_dir = Path(f"./{county.lower()}-{_run_slug}")
+        if output_dir != new_output_dir:
+            if output_dir.exists() and not new_output_dir.exists():
+                output_dir.rename(new_output_dir)
+            else:
+                new_output_dir.mkdir(parents=True, exist_ok=True)
+            output_dir = new_output_dir
+    tiles_dir = output_dir / f"tiles-{_run_slug}"
 
     _phase("generate_tiles", 65, f"Generating tiles z{zoom_str(zoom_list)}")
     if not json_out:
@@ -345,7 +360,7 @@ def run(
 
     viewer_path = viewer.generate_viewer_html(
         output_dir / "viewer.html",
-        tiles_path=f"tiles_{style}",
+        tiles_path=f"tiles-{_run_slug}",
         county_name=county_info["name"],
         style=style,
         dem_type=dem.upper(),
@@ -362,7 +377,7 @@ def run(
         console.print(f"[green]✓[/green] Viewer: {viewer_path}")
 
     # MBTiles (always generated)
-    mbtiles_path = output_dir / f"{county.lower()}-hillshade-{style}.mbtiles"
+    mbtiles_path = output_dir / f"{county.lower()}-{_run_slug}.mbtiles"
     _phase("package_mbtiles", 85, f"Packing MBTiles: {mbtiles_path.name}")
     if not json_out:
         console.print(f"[dim]Packing MBTiles...[/dim]")
@@ -374,7 +389,7 @@ def run(
 
     pmtiles_path = None
     if pmtiles:
-        pmtiles_path = output_dir / f"{county.lower()}-hillshade-{style}.pmtiles"
+        pmtiles_path = output_dir / f"{county.lower()}-{_run_slug}.pmtiles"
         with console.status("[green]Converting to PMTiles...") if not json_out else _nullctx():
             tile.convert_to_pmtiles(mbtiles_path, pmtiles_path)
         if not json_out:
