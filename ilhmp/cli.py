@@ -755,6 +755,9 @@ def themes_cmd(
             console.print(f"   Use [bold]ilhmp run <county> --theme <name>[/bold] to apply.\n")
 
 
+# Import catalog/serve/publish commands
+from . import _cli_catalog as _  # noqa: F401, E402
+
 if __name__ == "__main__":
     app()
 

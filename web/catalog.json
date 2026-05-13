@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-08T20:30:00Z",
+  "generated": "2026-05-13T22:23:57Z",
   "source": "ISGS ILHMP LiDAR + USGS 3DEP",
   "project": "https://github.com/emuehlstein/illinois-hillshade-gen",
   "themes": [
@@ -2009,6 +2009,156 @@
           "pmtiles": "tiles/putnam-atak-dark-9x.pmtiles",
           "pmtiles_size_mb": 260,
           "generated_at": "2026-05-08T04:00:00Z"
+        },
+        {
+          "id": "putnam-atak-dark-z9-16",
+          "theme": "atak-dark",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 4728,
+          "size_mb": 209.8,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/atak-dark/putnam-atak-dark-z9-16.mbtiles",
+          "generated_at": "2026-05-13T22:23:55Z"
+        },
+        {
+          "id": "putnam-atak-light-z9-16",
+          "theme": "atak-light",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 4728,
+          "size_mb": 216.6,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/atak-light/putnam-atak-light-z9-16.mbtiles",
+          "generated_at": "2026-05-13T22:23:55Z"
+        },
+        {
+          "id": "putnam-cool-elevation-z9-16",
+          "theme": "cool-elevation",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 3548,
+          "size_mb": 186.8,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/cool-elevation/putnam-cool-elevation-z9-16.mbtiles",
+          "generated_at": "2026-05-13T22:23:56Z"
+        },
+        {
+          "id": "putnam-cool-z9-16",
+          "theme": "cool",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 4728,
+          "size_mb": 234.9,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/cool/putnam-cool-z9-16.mbtiles",
+          "generated_at": "2026-05-13T22:23:56Z"
+        },
+        {
+          "id": "putnam-flat-terrain-z9-16",
+          "theme": "flat-terrain",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 4728,
+          "size_mb": 309.8,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/flat-terrain/putnam-flat-terrain-z9-16.mbtiles",
+          "generated_at": "2026-05-13T22:23:56Z"
+        },
+        {
+          "id": "putnam-simmon-light-z9-16",
+          "theme": "simmon-light",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 4728,
+          "size_mb": 226.8,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/simmon-light/putnam-simmon-light-z9-16.mbtiles",
+          "generated_at": "2026-05-13T22:23:56Z"
+        },
+        {
+          "id": "putnam-simmon-z9-16",
+          "theme": "simmon",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 4728,
+          "size_mb": 219.5,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/simmon/putnam-simmon-z9-16.mbtiles",
+          "generated_at": "2026-05-13T22:23:57Z"
+        },
+        {
+          "id": "putnam-tactical-z9-16",
+          "theme": "tactical",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 4728,
+          "size_mb": 167.2,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/tactical/putnam-tactical-z9-16.mbtiles",
+          "generated_at": "2026-05-13T22:23:57Z"
+        },
+        {
+          "id": "putnam-vivid-elevation-z9-16",
+          "theme": "vivid-elevation",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 3548,
+          "size_mb": 204.5,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/vivid-elevation/putnam-vivid-elevation-z9-16.mbtiles",
+          "generated_at": "2026-05-13T22:23:57Z"
+        },
+        {
+          "id": "putnam-vivid-z9-16",
+          "theme": "vivid",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 4728,
+          "size_mb": 255.2,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/vivid/putnam-vivid-z9-16.mbtiles",
+          "generated_at": "2026-05-13T22:23:57Z"
         }
       ]
     },
