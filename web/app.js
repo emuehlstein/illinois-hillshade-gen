@@ -599,7 +599,22 @@ function showOverlay() {
   if (center) selectorMap.flyTo({ center, zoom, duration: 800 });
 }
 
-
+// Re-show overlay when controls change (theme/exag/dem).
+// If a tile is available for the new settings, swap it in.
+// If not, remove the overlay so stale tiles don't linger.
+function refreshOverlay() {
+  if (!state.county) return;
+  const tile = findMatchingTile(state.county) || findBestTile(state.county);
+  if (tile) {
+    showOverlay(); // showOverlay always removes+re-adds with current tile
+    const btn = document.getElementById('btn-preview');
+    if (btn) { btn.textContent = '✕ Hide Map'; btn.classList.add('btn-active'); }
+  } else {
+    removeOverlay();
+    const btn = document.getElementById('btn-preview');
+    if (btn) { btn.textContent = '👁 Show on Map'; btn.classList.remove('btn-active'); }
+  }
+}
 
 function getCountyCenter() {
   if (!state.county || !catalog) return IL_CENTER;
@@ -649,6 +664,7 @@ function wireControls() {
     renderStatusCard();
     refreshFillColors();
     updateAvailabilityDots();
+    refreshOverlay();
   });
 
   // Theme button group
@@ -660,6 +676,7 @@ function wireControls() {
     renderStatusCard();
     refreshFillColors();
     updateAvailabilityDots();
+    refreshOverlay();
   });
 
   // Exaggeration radio group
@@ -671,6 +688,7 @@ function wireControls() {
     renderStatusCard();
     refreshFillColors();
     updateAvailabilityDots();
+    refreshOverlay();
   });
 
   // Zoom chips
