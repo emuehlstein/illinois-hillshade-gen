@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-13T22:23:57Z",
+  "generated": "2026-05-14T01:13:18Z",
   "source": "ISGS ILHMP LiDAR + USGS 3DEP",
   "project": "https://github.com/emuehlstein/illinois-hillshade-gen",
   "themes": [
@@ -2159,6 +2159,34 @@
           "size_mb": 255.2,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/vivid/putnam-vivid-z9-16.mbtiles",
           "generated_at": "2026-05-13T22:23:57Z"
+        },
+        {
+          "id": "putnam-tactical-9x-z9-16",
+          "theme": "tactical",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "size_mb": 280,
+          "tile_server": "https://tiles.chicagooffline.com/services/putnam-tactical-z9-16",
+          "generated_at": "2026-05-13T19:02:00Z"
+        },
+        {
+          "id": "putnam-cool-elevation-9x-z9-16",
+          "theme": "cool-elevation",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "size_mb": 272,
+          "tile_server": "https://tiles.chicagooffline.com/services/putnam-cool-elevation-z9-16",
+          "generated_at": "2026-05-13T19:18:00Z"
         }
       ]
     },
