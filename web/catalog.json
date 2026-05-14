@@ -1621,7 +1621,47 @@
           "size_gb": 73.4
         }
       },
-      "tiles": [],
+      "tiles": [
+        {
+          "id": "mchenry-atak-dark-z9-16",
+          "theme": "atak-dark",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "pmtiles": "tiles/mchenry-atak-dark-z9-16.pmtiles",
+          "pmtiles_size_mb": 1177,
+          "generated_at": "2026-05-14T00:00:00Z"
+        },
+        {
+          "id": "mchenry-atak-light-z9-16",
+          "theme": "atak-light",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "pmtiles": "tiles/mchenry-atak-light-z9-16.pmtiles",
+          "pmtiles_size_mb": 1337,
+          "generated_at": "2026-05-14T00:00:00Z"
+        },
+        {
+          "id": "mchenry-tactical-z9-16",
+          "theme": "tactical",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "pmtiles": "tiles/mchenry-tactical-z9-16.pmtiles",
+          "pmtiles_size_mb": 1049,
+          "generated_at": "2026-05-14T00:00:00Z"
+        }
+      ],
       "center": [
         -88.45306400000001,
         42.3247885
