@@ -155,11 +155,29 @@ def generate(
         tmp_dir = Path(_tmp)
 
         if shading_mode == ShadingMode.COMPOSITE:
-            gray_path = _generate_composite(
-                input_dem, tmp_dir, exaggeration, azimuth, altitude,
-                composite_weights, cache_dir, force_recompute,
-                aspect_blend=aspect_blend,
-            )
+            # Build a cache key for the final blended composite so themes
+            # with identical weights + aspect_blend share a single result.
+            if cache_dir is not None:
+                w = composite_weights if composite_weights else (0.6, 0.3, 0.1)
+                w_tag = "_".join(str(v) for v in w)
+                comp_cache = cache_dir / (
+                    f"{input_dem.stem}_gray_z{exaggeration}_composite"
+                    f"_w{w_tag}_a{aspect_blend}.tif"
+                )
+            else:
+                comp_cache = None
+
+            if comp_cache and comp_cache.exists() and not force_recompute:
+                gray_path = comp_cache
+            else:
+                gray_path = _generate_composite(
+                    input_dem, tmp_dir, exaggeration, azimuth, altitude,
+                    composite_weights, cache_dir, force_recompute,
+                    aspect_blend=aspect_blend,
+                )
+                if comp_cache is not None:
+                    shutil.copy2(gray_path, comp_cache)
+                    gray_path = comp_cache
         else:
             gray_path = tmp_dir / "hillshade_gray.tif"
 
