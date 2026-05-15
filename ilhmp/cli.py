@@ -365,23 +365,27 @@ def run(
     center_lon = (bounds[0] + bounds[2]) / 2
     center_lat = (bounds[1] + bounds[3]) / 2
 
-    viewer_path = viewer.generate_viewer_html(
-        output_dir / "viewer.html",
-        tiles_path=f"tiles-{_run_slug}",
-        county_name=county_info["name"],
-        style=style,
-        dem_type=dem.upper(),
-        exaggeration=exaggeration,
-        min_zoom=zoom_min(zoom_list),
-        max_zoom=zoom_max(zoom_list),
-        center_lat=center_lat,
-        center_lon=center_lon,
-        tile_format="tiles",
-        bounds=bounds,
-        geojson_path=geojson_path,
-    )
-    if not json_out:
-        console.print(f"[green]✓[/green] Viewer: {viewer_path}")
+    try:
+        viewer_path = viewer.generate_viewer_html(
+            output_dir / "viewer.html",
+            tiles_path=f"tiles-{_run_slug}",
+            county_name=county_info["name"],
+            style=style,
+            dem_type=dem.upper(),
+            exaggeration=exaggeration,
+            min_zoom=zoom_min(zoom_list),
+            max_zoom=zoom_max(zoom_list),
+            center_lat=center_lat,
+            center_lon=center_lon,
+            tile_format="tiles",
+            bounds=bounds,
+            geojson_path=geojson_path,
+        )
+        if not json_out:
+            console.print(f"[green]✓[/green] Viewer: {viewer_path}")
+    except Exception as _viewer_err:
+        if not json_out:
+            console.print(f"[yellow]⚠[/yellow] Viewer generation skipped: {_viewer_err}")
 
     # MBTiles (always generated)
     mbtiles_path = output_dir / f"{county.lower()}-{_run_slug}.mbtiles"
