@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-14T01:13:18Z",
+  "generated": "2026-05-16T15:09:51Z",
   "source": "ISGS ILHMP LiDAR + USGS 3DEP",
   "project": "https://github.com/emuehlstein/illinois-hillshade-gen",
   "themes": [
@@ -1206,7 +1206,161 @@
           "size_gb": 9.3
         }
       },
-      "tiles": [],
+      "tiles": [
+        {
+          "id": "kendall-atak-dark-z9-16",
+          "theme": "atak-dark",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 5941,
+          "size_mb": 603.1,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x/atak-dark/kendall-atak-dark-z9-16.mbtiles",
+          "generated_at": "2026-05-16T12:45:36Z",
+          "pmtiles": "tiles/kendall-atak-dark-z9-16.pmtiles",
+          "pmtiles_size_mb": 598.1
+        },
+        {
+          "id": "kendall-atak-light-z9-16",
+          "theme": "atak-light",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 5941,
+          "size_mb": 675.4,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x/atak-light/kendall-atak-light-z9-16.mbtiles",
+          "generated_at": "2026-05-16T12:48:06Z",
+          "pmtiles": "tiles/kendall-atak-light-z9-16.pmtiles",
+          "pmtiles_size_mb": 670.4
+        },
+        {
+          "id": "kendall-cool-elevation-z9-16",
+          "theme": "cool-elevation",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 5596,
+          "size_mb": 510.7,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x/cool-elevation/kendall-cool-elevation-z9-16.mbtiles",
+          "generated_at": "2026-05-16T12:50:01Z",
+          "pmtiles": "tiles/kendall-cool-elevation-z9-16.pmtiles",
+          "pmtiles_size_mb": 506.1
+        },
+        {
+          "id": "kendall-cool-z9-16",
+          "theme": "cool",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 5941,
+          "size_mb": 616.2,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x/cool/kendall-cool-z9-16.mbtiles",
+          "generated_at": "2026-05-16T12:52:17Z",
+          "pmtiles": "tiles/kendall-cool-z9-16.pmtiles",
+          "pmtiles_size_mb": 611.2
+        },
+        {
+          "id": "kendall-flat-terrain-z9-16",
+          "theme": "flat-terrain",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 5941,
+          "size_mb": 566.2,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x/flat-terrain/kendall-flat-terrain-z9-16.mbtiles",
+          "generated_at": "2026-05-16T12:54:25Z",
+          "pmtiles": "tiles/kendall-flat-terrain-z9-16.pmtiles",
+          "pmtiles_size_mb": 561.3
+        },
+        {
+          "id": "kendall-grayscale-z9-16",
+          "theme": "grayscale",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 5941,
+          "size_mb": 465.6,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x/grayscale/kendall-grayscale-z9-16.mbtiles",
+          "generated_at": "2026-05-16T12:56:09Z",
+          "pmtiles": "tiles/kendall-grayscale-z9-16.pmtiles",
+          "pmtiles_size_mb": 460.8
+        },
+        {
+          "id": "kendall-simmon-light-z9-16",
+          "theme": "simmon-light",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 5941,
+          "size_mb": 634.8,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x/simmon-light/kendall-simmon-light-z9-16.mbtiles",
+          "generated_at": "2026-05-16T12:58:31Z",
+          "pmtiles": "tiles/kendall-simmon-light-z9-16.pmtiles",
+          "pmtiles_size_mb": 629.8
+        },
+        {
+          "id": "kendall-simmon-z9-16",
+          "theme": "simmon",
+          "dem": "dtm",
+          "exaggeration": "9",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 5941,
+          "size_mb": 571.3,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x/simmon/kendall-simmon-z9-16.mbtiles",
+          "generated_at": "2026-05-16T13:00:40Z",
+          "pmtiles": "tiles/kendall-simmon-z9-16.pmtiles",
+          "pmtiles_size_mb": 566.4
+        },
+        {
+          "id": "kendall-tactical-z9-16",
+          "theme": "tactical",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 5941,
+          "size_mb": 533.7,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x/tactical/kendall-tactical-z9-16.mbtiles",
+          "generated_at": "2026-05-16T15:09:51Z",
+          "pmtiles": "tiles/kendall-tactical-z9-16.pmtiles",
+          "pmtiles_size_mb": 528.7
+        }
+      ],
       "center": [
         -88.42785900000001,
         41.590843
@@ -1710,16 +1864,18 @@
           "id": "mchenry-flat-terrain-z9-16",
           "theme": "flat-terrain",
           "dem": "dtm",
-          "exaggeration": "auto",
+          "exaggeration": "9",
           "zoom": [
             9,
             16
           ],
           "zoom_str": "9-16",
-          "size_mb": 1152.1,
-          "pmtiles": "tiles/mchenry-flat-terrain-z9-16.pmtiles",
+          "tile_count": 11829,
+          "size_mb": 1146.3,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/mchenry-themes-9x/flat-terrain/mchenry-flat-terrain-z9-16.mbtiles",
-          "generated_at": "2026-05-16T01:36:40Z"
+          "generated_at": "2026-05-16T12:43:20Z",
+          "pmtiles": "tiles/mchenry-flat-terrain-z9-16.pmtiles",
+          "pmtiles_size_mb": 1136.4
         },
         {
           "id": "mchenry-vivid-z9-16",

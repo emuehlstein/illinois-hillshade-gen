@@ -355,7 +355,11 @@ function findMatchingTile(countyId) {
   return county.tiles.find(t => {
     const themeMatch = t.theme === state.theme;
     const demMatch   = t.dem   === state.dem;
-    const exagMatch  = String(t.exaggeration) === String(state.exag) || state.exag === 'auto';
+    // Normalize exaggeration for comparison: strip trailing 'x', treat 'auto' as wildcard
+    const normExag = (v) => String(v || '').replace(/x$/i, '').toLowerCase();
+    const exagMatch  = normExag(t.exaggeration) === normExag(state.exag)
+                     || state.exag === 'auto'
+                     || normExag(t.exaggeration) === 'auto';
     return themeMatch && demMatch && exagMatch;
   }) || null;
 }
