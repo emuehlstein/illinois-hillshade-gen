@@ -5,7 +5,7 @@ centered on the Illinois River valley. Good test case: mixed flat/moderate terra
 
 **Source:** USGS ILHMP DTM (2022), 1ft (0.3m) resolution  
 **Zoom:** z9–16  
-**Tile shown:** z12 / ~41.21°N, 89.32°W (Illinois River corridor)
+**Tile shown:** z16 / ~41.255°N, 89.345°W (Hennepin — Illinois River valley bluffs)
 
 ---
 
