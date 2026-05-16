@@ -257,17 +257,73 @@ save_theme(my_theme, Path("my-theme.json"))
 
 ## Full Pipeline
 
+### Generate locally
+
 ```bash
 # Download → reproject → hillshade → tile (all-in-one)
 ilhmp run cook --dem dtm --theme simmon --zoom 10-16
 
-# With S3 caching for intermediates
+# With local DEM cache (avoids re-downloading)
 ilhmp run cook --dem dtm --theme simmon --cache-dir ./cache
 
-# Generate multiple styles from cached DEM
+# Multiple themes from the same cached DEM
 ilhmp run cook --theme atak-dark --cache-dir ./cache
 ilhmp run cook --theme atak-light --cache-dir ./cache
-ilhmp run cook --theme tactical --cache-dir ./cache
+ilhmp run cook --theme flat-terrain --cache-dir ./cache
+```
+
+### Generate on AWS EC2
+
+Use [chimesh-tileserver](https://github.com/emuehlstein/chimesh-tileserver) for cloud generation:
+
+```bash
+# Spin up ARM64 worker, run all themes, upload to S3 + tile server
+./generate-aws.sh cook --theme atak-dark,atak-light,flat-terrain
+
+# List available themes
+ilhmp themes
+```
+
+### Publish: PMTiles → exaggeratedrelief.com
+
+Converts mbtiles to PMTiles, uploads to S3, updates catalog, opens PR:
+
+```bash
+ilhmp publish cook-atak-dark-z10-16.mbtiles --county cook --theme atak-dark
+```
+
+Served via CloudFront at `https://exaggeratedrelief.com` with PMTiles range requests.
+
+### Push: mbtiles → tiles.exaggeratedrelief.com
+
+SCPs the mbtiles to the tile server. mbtileserver auto-discovers it — no restart needed:
+
+```bash
+# Single file
+ilhmp push cook-atak-dark-z10-16.mbtiles
+
+# Whole output directory
+ilhmp push-all ./output/cook/
+```
+
+Served as XYZ tiles at:
+```
+https://tiles.exaggeratedrelief.com/services/{name}/tiles/{z}/{x}/{y}.png
+https://tiles.exaggeratedrelief.com/services/{name}/map   # preview
+```
+
+### Typical end-to-end
+
+```bash
+# 1. Generate
+ilhmp run cook --theme atak-dark --zoom 10-16 --cache-dir ./cache
+
+# 2. Push mbtiles to tile server
+ilhmp push ./output/cook/atak-dark/cook-atak-dark-z10-16.mbtiles
+
+# 3. Publish PMTiles to exaggeratedrelief.com
+ilhmp publish ./output/cook/atak-dark/cook-atak-dark-z10-16.mbtiles \
+    --county cook --theme atak-dark
 ```
 
 ## Installation
