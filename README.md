@@ -23,24 +23,26 @@ ilhmp themes
 
 Themes are named presets that capture color ramp, shading mode, exaggeration, and other parameters. Use `--theme <name>` with any command.
 
-| Theme | Shading | Color | Exagg | Best For |
-|-------|---------|-------|-------|----------|
-| **`atak-dark`** | multidirectional | blue-grey | auto | ATAK dark mode overlays |
-| **`atak-light`** | multidirectional | warm grey | auto | ATAK light mode overlays |
-| **`simmon`** | composite (60/30/10) | blue-grey | auto | Best overall terrain rendering |
-| **`simmon-light`** | composite (60/30/10) | warm grey | auto | Light basemap composite |
-| **`flat-terrain`** | composite (50/30/20) | blue-grey | 15× | Flat regions (IL, IN, FL) |
-| **`mountain`** | composite (70/20/10) | blue-grey | 2× | Steep terrain (Rockies, Alps) |
-| **`lidar-urban`** | composite (50/30/20) | blue-grey | 6× | 1m LiDAR in cities |
-| **`lidar-natural`** | composite (60/30/10) | blue-grey | 9× | 1m LiDAR in rural areas |
-| **`vivid`** | composite (50/30/20) | blue→green→orange→red | auto | Maximum feature contrast |
-| **`cool`** | composite (50/30/20) | blue-grey desaturated | auto | Professional cartographic |
-| **`vivid-elevation`** | composite (50/30/20) | vivid by height | auto | Elevation-mapped vivid |
-| **`cool-elevation`** | composite (50/30/20) | blue-grey by height | auto | Elevation-mapped cartographic |
-| **`tactical`** | multidirectional | olive drab | auto | Military-style maps |
-| **`terrain`** | multidirectional | earth tones | auto | Topographic map style |
-| **`grayscale`** | multidirectional | pure grey | auto | Base layer for custom coloring |
-| **`classic`** | standard (315°) | tint blend | 3× | Legacy v1 behavior |
+| Theme | Sample | Shading | Color | Exagg | Best For | Preview |
+|-------|--------|---------|-------|-------|----------|---------|
+| **`atak-dark`** | ![](examples/putnam/atak-dark.png) | multidirectional | blue-grey | auto | ATAK dark mode overlays | [map](https://tiles.chicagooffline.com/services/putnam-hillshade-dark/map) · [pmtiles](https://exaggeratedrelief.com/tiles/putnam-atak-dark-9x.pmtiles) |
+| **`atak-light`** | ![](examples/putnam/atak-light.png) | multidirectional | warm grey | auto | ATAK light mode overlays | [map](https://tiles.chicagooffline.com/services/putnam-hillshade-light/map) · [pmtiles](https://exaggeratedrelief.com/tiles/putnam-atak-light-autox.pmtiles) |
+| **`simmon`** | ![](examples/putnam/simmon.png) | composite (60/30/10) | blue-grey | auto | Best overall terrain rendering | [pmtiles](https://exaggeratedrelief.com/tiles/putnam-simmon-autox.pmtiles) |
+| **`simmon-light`** | ![](examples/putnam/simmon-light.png) | composite (60/30/10) | warm grey | auto | Light basemap composite | [pmtiles](https://exaggeratedrelief.com/tiles/putnam-simmon-light-autox.pmtiles) |
+| **`flat-terrain`** | ![](examples/putnam/flat-terrain.png) | composite (50/30/20) | blue-grey | 15× | Flat regions (IL, IN, FL) | — |
+| **`mountain`** | — | composite (70/20/10) | blue-grey | 2× | Steep terrain (Rockies, Alps) | — |
+| **`lidar-urban`** | — | composite (50/30/20) | blue-grey | 6× | 1m LiDAR in cities | — |
+| **`lidar-natural`** | — | composite (60/30/10) | blue-grey | 9× | 1m LiDAR in rural areas | — |
+| **`vivid`** | ![](examples/putnam/vivid.png) | composite (50/30/20) | blue→green→orange→red | auto | Maximum feature contrast | [pmtiles](https://exaggeratedrelief.com/tiles/putnam-vivid-z9-16.pmtiles) |
+| **`cool`** | ![](examples/putnam/cool.png) | composite (50/30/20) | blue-grey desaturated | auto | Professional cartographic | [pmtiles](https://exaggeratedrelief.com/tiles/putnam-cool-z9-16.pmtiles) |
+| **`vivid-elevation`** | ![](examples/putnam/vivid-elevation.png) | composite (50/30/20) | vivid by height | auto | Elevation-mapped vivid | [map](https://tiles.chicagooffline.com/services/putnam-hillshade-vivid-elev/map) · [pmtiles](https://exaggeratedrelief.com/tiles/putnam-vivid-elevation-z9-16.pmtiles) |
+| **`cool-elevation`** | ![](examples/putnam/cool-elevation.png) | composite (50/30/20) | blue-grey by height | auto | Elevation-mapped cartographic | [map](https://tiles.chicagooffline.com/services/putnam-cool-elevation-z9-16/map) · [pmtiles](https://exaggeratedrelief.com/tiles/putnam-cool-elevation-z9-16.pmtiles) |
+| **`tactical`** | ![](examples/putnam/tactical.png) | multidirectional | olive drab | auto | Military-style maps | [map](https://tiles.chicagooffline.com/services/putnam-tactical-z9-16/map) · [pmtiles](https://exaggeratedrelief.com/tiles/putnam-tactical-autox.pmtiles) |
+| **`terrain`** | — | multidirectional | earth tones | auto | Topographic map style | — |
+| **`grayscale`** | ![](examples/putnam/grayscale.png) | multidirectional | pure grey | auto | Base layer for custom coloring | [map](https://tiles.chicagooffline.com/services/putnam-hillshade-gray/map) · [pmtiles](https://exaggeratedrelief.com/tiles/putnam-grayscale-autox.pmtiles) |
+| **`classic`** | — | standard (315°) | tint blend | 3× | Legacy v1 behavior | — |
+
+→ **[Full Putnam theme gallery with notes](examples/putnam/README.md)**
 
 ### Color Modes
 
