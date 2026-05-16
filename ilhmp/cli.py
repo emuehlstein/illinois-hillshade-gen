@@ -277,7 +277,14 @@ def run(
             raise typer.Exit(1)
 
     # Step 3: Hillshade
-    hs_path = intermediates_dir / f"{county.lower()}_hillshade_{style}_z{exag_float}_{shading_mode.value}.tif"
+    # Include composite weights in cache key so themes with the same ramp+shading
+    # but different weights (e.g. simmon vs flat-terrain, both ramp=dark+composite)
+    # don't collide.
+    if shading_mode == ShadingMode.COMPOSITE and parsed_weights:
+        _w_tag = "_".join(str(v) for v in parsed_weights)
+        hs_path = intermediates_dir / f"{county.lower()}_hillshade_{style}_z{exag_float}_{shading_mode.value}_w{_w_tag}.tif"
+    else:
+        hs_path = intermediates_dir / f"{county.lower()}_hillshade_{style}_z{exag_float}_{shading_mode.value}.tif"
     if not hs_path.exists() or force_recompute:
         _phase("render_hillshade", 40, f"Rendering {style} hillshade ({exag_float:.2f}x {shading_mode.value})")
         if not json_out:
