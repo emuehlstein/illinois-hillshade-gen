@@ -334,6 +334,228 @@ if(LAYERS.length)load(0);
     path.write_text(html)
 
 
+# ── serve (push mbtiles to tiles.exaggeratedrelief.com) ─────────────────────
+
+# Default tile server config — matches TOOLS.md
+_TILE_SERVER_HOST = "ubuntu@3.20.103.82"
+_TILE_SERVER_KEY  = str(Path.home() / ".ssh" / "mapserver-ec2.pem")
+_TILE_SERVER_DIR  = "/data/tiles"
+_TILE_SERVER_CADDY = "/data/Caddyfile"
+_TILE_SERVER_DOMAIN = "tiles.exaggeratedrelief.com"
+_TILE_SERVER_LEGACY_DOMAIN = "tiles.chicagooffline.com"
+
+
+def _scp_to_tile_server(local: Path, key: str = _TILE_SERVER_KEY,
+                         host: str = _TILE_SERVER_HOST,
+                         remote_dir: str = _TILE_SERVER_DIR) -> None:
+    r = _sp.run(
+        ["scp", "-i", key, "-o", "StrictHostKeyChecking=no",
+         str(local), f"{host}:{remote_dir}/"],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        raise RuntimeError(f"scp failed: {r.stderr.strip()}")
+
+
+def _ssh(cmd: str, key: str = _TILE_SERVER_KEY,
+          host: str = _TILE_SERVER_HOST) -> str:
+    r = _sp.run(
+        ["ssh", "-i", key, "-o", "StrictHostKeyChecking=no", host, cmd],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        raise RuntimeError(f"ssh failed: {r.stderr.strip()}")
+    return r.stdout.strip()
+
+
+def _tile_server_list(key: str = _TILE_SERVER_KEY,
+                      host: str = _TILE_SERVER_HOST,
+                      remote_dir: str = _TILE_SERVER_DIR) -> list[str]:
+    """Return list of mbtiles filenames currently on the tile server."""
+    out = _ssh(f"ls {remote_dir}/*.mbtiles 2>/dev/null", key=key, host=host)
+    return [Path(p).name for p in out.splitlines() if p.strip()]
+
+
+def _ensure_caddy_vhost(key: str = _TILE_SERVER_KEY,
+                         host: str = _TILE_SERVER_HOST,
+                         caddy_path: str = _TILE_SERVER_CADDY,
+                         domain: str = _TILE_SERVER_DOMAIN) -> bool:
+    """Add tiles.exaggeratedrelief.com vhost to Caddyfile if missing. Returns True if changed."""
+    current = _ssh(f"cat {caddy_path}", key=key, host=host)
+    if domain in current:
+        return False
+    new_block = f"""
+{domain} {{
+    header {{
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods \"GET, OPTIONS\"
+        Access-Control-Allow-Headers \"Content-Type\"
+    }}
+
+    handle /* {{
+        reverse_proxy mbtileserver:8000 {{
+            header_up X-Forwarded-Host {{host}}
+            header_up X-Forwarded-Proto {{scheme}}
+        }}
+    }}
+}}
+"""
+    append_cmd = f"echo '{new_block}' | sudo tee -a {caddy_path} > /dev/null"
+    _ssh(append_cmd, key=key, host=host)
+    # Reload Caddy gracefully
+    _ssh("cd /data && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile",
+         key=key, host=host)
+    return True
+
+
+@app.command("push")
+def push_cmd(
+    mbtiles: Path = typer.Argument(..., help="MBTiles file to push to tiles.exaggeratedrelief.com"),
+    host: str = typer.Option(_TILE_SERVER_HOST, "--host", help="SSH host (user@ip)"),
+    key: str = typer.Option(_TILE_SERVER_KEY, "--key", help="SSH key path"),
+    remote_dir: str = typer.Option(_TILE_SERVER_DIR, "--dir", help="Remote tile directory"),
+    setup_domain: bool = typer.Option(True, "--setup-domain/--no-setup-domain",
+                                       help="Add tiles.exaggeratedrelief.com Caddy vhost if missing"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    json_out: bool = typer.Option(False, "--json"),
+):
+    """
+    Push a local mbtiles to tiles.exaggeratedrelief.com.
+
+    Copies the file to /data/tiles/ on the tile server via SCP.
+    mbtileserver auto-discovers new files — no restart needed.
+    Optionally adds the tiles.exaggeratedrelief.com Caddy vhost if missing.
+
+    URL after push:
+      https://tiles.exaggeratedrelief.com/services/{stem}
+      https://tiles.exaggeratedrelief.com/services/{stem}/tiles/{z}/{x}/{y}.png
+    """
+    mbtiles = mbtiles.resolve()
+    if not mbtiles.exists():
+        console.print(f"[red]Not found: {mbtiles}[/red]")
+        raise typer.Exit(1)
+
+    stem = mbtiles.stem
+    size_mb = mbtiles.stat().st_size // 1_048_576
+    remote_path = f"{remote_dir}/{mbtiles.name}"
+
+    console.print(f"\n[bold]ilhmp push[/bold]  {'[yellow](dry run)[/yellow]' if dry_run else ''}")
+    console.print(f"   MBTiles:  {mbtiles.name} ({size_mb}MB)")
+    console.print(f"   Target:   {host}:{remote_path}")
+    console.print(f"   URL:      https://{_TILE_SERVER_DOMAIN}/services/{stem}")
+
+    if dry_run:
+        console.print("\n[yellow]Dry run — no changes made.[/yellow]")
+        return
+
+    # 1. Check if already present
+    console.print("\n[bold]1/3[/bold] Checking remote...")
+    try:
+        existing = _tile_server_list(key=key, host=host, remote_dir=remote_dir)
+    except Exception as e:
+        console.print(f"[red]Could not reach tile server:[/red] {e}")
+        raise typer.Exit(1)
+
+    if mbtiles.name in existing:
+        console.print(f"[yellow]Already present: {mbtiles.name}[/yellow] — re-uploading to overwrite")
+    else:
+        console.print(f"[dim]{len(existing)} files on server[/dim]")
+
+    # 2. SCP
+    console.print(f"\n[bold]2/3[/bold] Uploading ({size_mb}MB)...")
+    try:
+        _scp_to_tile_server(mbtiles, key=key, host=host, remote_dir=remote_dir)
+    except Exception as e:
+        console.print(f"[red]Upload failed:[/red] {e}")
+        raise typer.Exit(1)
+    console.print(f"[green]✓[/green] {mbtiles.name} → {host}:{remote_dir}/")
+
+    # 3. Ensure Caddy vhost
+    console.print(f"\n[bold]3/3[/bold] Caddy vhost...")
+    if setup_domain:
+        try:
+            changed = _ensure_caddy_vhost(key=key, host=host)
+            if changed:
+                console.print(f"[green]✓[/green] Added {_TILE_SERVER_DOMAIN} vhost + reloaded Caddy")
+            else:
+                console.print(f"[dim]{_TILE_SERVER_DOMAIN} vhost already present[/dim]")
+        except Exception as e:
+            console.print(f"[yellow]Caddy vhost setup failed (not fatal):[/yellow] {e}")
+    else:
+        console.print("[dim]Skipped (--no-setup-domain)[/dim]")
+
+    console.print(f"\n[bold green]Done![/bold green]")
+    console.print(f"   Preview: https://{_TILE_SERVER_DOMAIN}/services/{stem}/map")
+    console.print(f"   XYZ:     https://{_TILE_SERVER_DOMAIN}/services/{stem}/tiles/{{z}}/{{x}}/{{y}}.png")
+
+    if json_out:
+        print(json.dumps({
+            "id": stem,
+            "file": mbtiles.name,
+            "size_mb": size_mb,
+            "url": f"https://{_TILE_SERVER_DOMAIN}/services/{stem}",
+            "xyz": f"https://{_TILE_SERVER_DOMAIN}/services/{stem}/tiles/{{z}}/{{x}}/{{y}}.png",
+        }, indent=2))
+
+
+@app.command("push-all")
+def push_all_cmd(
+    directory: Path = typer.Argument(..., help="Directory containing mbtiles to push"),
+    host: str = typer.Option(_TILE_SERVER_HOST, "--host"),
+    key: str = typer.Option(_TILE_SERVER_KEY, "--key"),
+    remote_dir: str = typer.Option(_TILE_SERVER_DIR, "--dir"),
+    skip_existing: bool = typer.Option(True, "--skip-existing/--overwrite",
+                                        help="Skip files already present on server"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+):
+    """
+    Push all mbtiles in a directory to tiles.exaggeratedrelief.com.
+
+    Useful for bulk-uploading a county's theme set after generation.
+    """
+    directory = directory.resolve()
+    files = sorted(directory.rglob("*.mbtiles"))
+    if not files:
+        console.print(f"[yellow]No mbtiles found in {directory}[/yellow]")
+        raise typer.Exit(1)
+
+    console.print(f"\n[bold]ilhmp push-all[/bold]  {'[yellow](dry run)[/yellow]' if dry_run else ''}")
+    console.print(f"   Directory: {directory}")
+    console.print(f"   Files:     {len(files)}")
+
+    try:
+        existing = _tile_server_list(key=key, host=host, remote_dir=remote_dir)
+    except Exception as e:
+        console.print(f"[red]Could not reach tile server:[/red] {e}")
+        raise typer.Exit(1)
+
+    skipped = 0
+    pushed = 0
+    failed = 0
+
+    for f in files:
+        size_mb = f.stat().st_size // 1_048_576
+        if skip_existing and f.name in existing:
+            console.print(f"   [dim]skip[/dim]  {f.name} ({size_mb}MB) — already present")
+            skipped += 1
+            continue
+        if dry_run:
+            console.print(f"   [cyan]would push[/cyan]  {f.name} ({size_mb}MB)")
+            pushed += 1
+            continue
+        try:
+            _scp_to_tile_server(f, key=key, host=host, remote_dir=remote_dir)
+            console.print(f"   [green]✓[/green] {f.name} ({size_mb}MB)")
+            pushed += 1
+        except Exception as e:
+            console.print(f"   [red]✗[/red] {f.name}: {e}")
+            failed += 1
+
+    console.print(f"\n[bold]Done[/bold] — pushed {pushed}, skipped {skipped}, failed {failed}")
+    if failed:
+        raise typer.Exit(1)
+
+
 # ── publish ───────────────────────────────────────────────────────────────────
 
 @app.command("publish")
