@@ -1,143 +1,247 @@
 # AGENTS.md — ilhmp agent usage guide
 
-`ilhmp` (Illinois Hillshade Map Products) is a CLI tool that downloads 1-meter-resolution LiDAR elevation data from the Illinois State Geological Survey (ISGS) clearinghouse and produces styled hillshade map tiles suitable for offline GIS applications such as ATAK. The pipeline covers download → reprojection → hillshade generation → MBTiles/PMTiles output → interactive HTML viewer, with caching of all intermediate files to avoid redundant processing.
+`ilhmp` is the CLI for the **illinois-hillshade-gen** platform. It downloads 1m-resolution LiDAR elevation data from the Illinois State Geological Survey (ISGS) clearinghouse and produces styled hillshade tiles for ATAK, offline use, and web publication.
+
+**Full pipeline:** download → reproject → hillshade → tile → MBTiles → push/publish
 
 ---
 
 ## System requirements
 
 - **Python 3.10+**
-- **GDAL** (provides `gdaldem`, `gdalwarp`, `gdal2tiles.py`, `ogr2ogr`) — install via Homebrew: `brew install gdal`
-- **mb-util** — `pip install mbutil` or `brew install mb-util`
-- **pmtiles CLI** (optional, only for PMTiles output) — `brew install protomaps/homebrew-protomaps/pmtiles`
+- **GDAL** (`gdaldem`, `gdalwarp`, `gdal2tiles.py`) — `brew install gdal`
+- **mb-util** — `pip install mbutil`
+- **pmtiles CLI** (publish workflow) — `brew install protomaps/homebrew-protomaps/pmtiles`
+- **AWS CLI** (publish workflow) — configured with access to `s3://exaggeratedrelief`
+- **SSH key** `~/.ssh/mapserver-ec2.pem` (push workflow) — access to tile server EC2
 
 ---
 
 ## Installation
 
 ```bash
-git clone <repo>
+git clone https://github.com/emuehlstein/illinois-hillshade-gen
 cd illinois-hillshade-gen
 pip install -e .
 ```
 
 ---
 
+## Themes
+
+Themes are named presets covering shading mode, color ramp, and exaggeration. Always use `--theme` rather than `--style` for new work.
+
+```bash
+ilhmp themes                    # list all themes
+ilhmp themes --show simmon      # full details + equivalent CLI flags
+```
+
+Key themes for Illinois flat terrain:
+
+| Theme | Best for |
+|-------|----------|
+| `atak-dark` | ATAK dark mode overlays |
+| `atak-light` | ATAK light mode overlays |
+| `simmon` | Best overall rendering |
+| `flat-terrain` | Maximum visibility, flat IL/IN terrain (15× fixed) |
+| `tactical` | Military/olive style |
+| `cool-elevation` | Elevation-mapped cartographic |
+| `vivid` / `vivid-elevation` | High-contrast false color |
+| `grayscale` | Base layer for custom coloring |
+
+---
+
 ## Common agent workflows
 
-### List available counties (JSON)
+### Full pipeline for a county
 
 ```bash
-ilhmp counties --json
+# Preferred: named theme
+ilhmp run putnam --theme atak-dark --zoom 9-16
+
+# With local DEM cache (skips re-download on reruns)
+ilhmp run putnam --theme atak-dark --zoom 9-16 \
+  --cache-dir /Volumes/ExtSSD1TB/dem/IL/putnam-cache \
+  --output /Volumes/ExtSSD1TB/dem/IL/putnam-themes-9x/atak-dark
+
+# Multiple themes from the same cached DEM (run sequentially, cache reused)
+ilhmp run putnam --theme atak-dark   --cache-dir ./cache
+ilhmp run putnam --theme atak-light  --cache-dir ./cache
+ilhmp run putnam --theme flat-terrain --cache-dir ./cache
+
+# Force-recompute (bypass cached hillshade TIF — use when cache is corrupt)
+ilhmp run putnam --theme tactical --force-recompute --cache-dir ./cache
+
+# JSON output for scripting
+ilhmp run putnam --theme atak-dark --json
 ```
 
-Returns a JSON array. Each entry has `id`, `name`, `fips`, `district`, `year`, `dtm_url`, `dsm_url`, `dtm_imageserver_url`, `dsm_imageserver_url`, and `bounds` (nullable).
-
-### Run the full pipeline for a county
+### List available counties
 
 ```bash
-ilhmp run putnam --dem dtm --style dark --zoom 10-16 --json
+ilhmp counties           # rich table
+ilhmp counties --json    # machine-readable array
 ```
 
-Use `--json` to get a machine-readable result object with paths to all generated files. Without `--json`, Rich-formatted progress is printed to stdout.
-
-### Download only
+### Use a pre-downloaded source
 
 ```bash
-ilhmp download cook --dem dtm --output ./cook_dtm.tif
+# Local ZIP (skip network download)
+ilhmp run cook --theme simmon --source-zip /path/to/cook_dtm.zip
+
+# Existing GeoTIFF (skip download + extraction entirely)
+ilhmp run cook --theme simmon --source /path/to/cook_dtm.tif
 ```
 
-Downloads the ZIP from the ISGS clearinghouse and extracts/converts the raster. Large counties (Cook ~3.7 GB, Bond ~1.7 GB) can take 10–40 minutes depending on connection speed.
-
-### Use a pre-downloaded ZIP (skip network download)
+### Auxiliary terrain layers
 
 ```bash
-# Extract + convert a local ZIP, then run the full pipeline
-ilhmp run cook --dem dsm --source-zip /Volumes/MAPSTORE/IL/cook_dsm_2022.zip
-
-# Or just extract to a GeoTIFF without running the pipeline
-ilhmp download cook --dem dsm --source-zip /Volumes/MAPSTORE/IL/cook_dsm_2022.zip --output ./cook_dsm.tif
+ilhmp layers cook --dem dtm --output aspect,slope,roughness,TRI
 ```
 
-Useful for large counties (Cook DSM is ~148 GB zipped) where the ZIP is already on disk.
-
-### Use an already-extracted GeoTIFF (skip download and extraction)
+### Local preview (all tiles in a directory)
 
 ```bash
-ilhmp run cook --dem dsm --source /Volumes/ssdtmp/cook_dsm.tif
+ilhmp serve --dirs /Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x
+# → opens http://localhost:9999 with a layer switcher
 ```
 
-Skips both the download and extraction steps entirely; the provided GeoTIFF is used as-is for reprojection.
+---
 
-### Separate intermediate files from outputs with --cache-dir
+## Publishing workflow
+
+There are two separate publication targets:
+
+| Command | Output | Destination |
+|---------|--------|-------------|
+| `ilhmp push` | MBTiles → tile server | `tiles.exaggeratedrelief.com` (XYZ) |
+| `ilhmp publish` | MBTiles → PMTiles → S3 | `exaggeratedrelief.com` (PMTiles via CloudFront) |
+
+### Push to tiles.exaggeratedrelief.com
 
 ```bash
-ilhmp run cook --dem dsm \
-  --cache-dir /Volumes/ssdtmp/cache \
-  --output /Volumes/ssdtmp/output
+# Single file
+ilhmp push putnam-atak-dark-z9-16.mbtiles
+
+# Whole output directory (skips already-present files)
+ilhmp push-all /Volumes/ExtSSD1TB/dem/IL/putnam-themes-9x/
+
+# Dry run
+ilhmp push putnam-atak-dark-z9-16.mbtiles --dry-run
 ```
 
-Intermediate files (`cook_dsm.tif`, `cook_dsm_4326.tif`, `cook_hillshade_dark.tif`) go to the cache dir. Final outputs (tiles, MBTiles, viewer, GeoJSON) go to the output dir. The cache dir can be wiped without losing results.
+Copies via SCP to `/data/tiles/` on the EC2. mbtileserver auto-discovers new files — no restart needed. First push also adds the `tiles.exaggeratedrelief.com` Caddy vhost if missing.
 
-These flags can be combined:
-
-```bash
-ilhmp run cook --dem dsm \
-  --source-zip /Volumes/MAPSTORE/IL/cook_dsm_2022.zip \
-  --cache-dir /Volumes/ssdtmp/cache \
-  --output /Volumes/ssdtmp/output \
-  --json
+**XYZ endpoint after push:**
+```
+https://tiles.exaggeratedrelief.com/services/{stem}/tiles/{z}/{x}/{y}.png
+https://tiles.exaggeratedrelief.com/services/{stem}/map   # built-in preview
 ```
 
-### Generate hillshade from an existing DEM
+### Publish to exaggeratedrelief.com (PMTiles)
 
 ```bash
-ilhmp hillshade ./cook_dtm_4326.tif --style dark --exaggeration 3
+ilhmp publish putnam-atak-dark-z9-16.mbtiles \
+  --county putnam --theme atak-dark --exag auto --no-pr
+
+# With PR (for tracked publication)
+ilhmp publish putnam-atak-dark-z9-16.mbtiles \
+  --county putnam --theme atak-dark
 ```
 
-### Generate tiles from an existing hillshade
+Steps: convert to PMTiles → upload to `s3://exaggeratedrelief/tiles/` → update `web/catalog.json` → optionally open a GitHub PR.
+
+### Catalog management
 
 ```bash
-ilhmp tile ./cook_hillshade_dark.tif --zoom 10-16 --format mbtiles
+ilhmp catalog list                        # all registered tiles
+ilhmp catalog list --county putnam        # filter by county
+ilhmp catalog add ./putnam-atak-dark.mbtiles --county putnam --theme atak-dark
+ilhmp catalog scan /Volumes/ExtSSD1TB/dem/IL/  # find unregistered mbtiles
 ```
 
-### Get a county boundary as GeoJSON
+---
+
+## AWS EC2 generation (chimesh-tileserver)
+
+For large counties or all-themes runs, use the EC2 pipeline in `~/chimesh-tileserver/`:
 
 ```bash
-ilhmp boundary cook --json
-# → {"county": "cook", "geojson": "/abs/path/to/cook.geojson"}
+# Single county, one or more themes
+./generate-aws.sh putnam --theme atak-dark,atak-light --zoom 9-16
+
+# All themes
+./generate-aws.sh putnam --theme all
+
+# Multiple counties
+./generate-aws.sh grundy dekalb --theme atak-dark,simmon,flat-terrain
+
+# Dry run
+./generate-aws.sh putnam --theme all --dry-run
 ```
 
-### View tiles locally
+Pull results when done:
 
 ```bash
-ilhmp view ./cook-hillshade/tiles_dark --port 9999
+./pull-aws-tiles-s3.sh putnam    # recommended: pull from S3 checkpoint
+./pull-aws-tiles.sh putnam       # fallback: pull directly from worker
+```
+
+Then publish:
+
+```bash
+ilhmp push-all ./output/putnam/
+ilhmp publish ./output/putnam/atak-dark/putnam-atak-dark-z9-16.mbtiles \
+  --county putnam --theme atak-dark
 ```
 
 ---
 
 ## Output file structure
 
-After `ilhmp run cook --style dark`, the output directory (`./cook-hillshade/` by default) contains:
+After `ilhmp run putnam --theme atak-dark --output ./out --cache-dir ./cache`:
 
 ```
-cook-hillshade/
-├── cook_dtm.tif                   # Raw 1m DEM (native projection)
-├── cook_dtm_4326.tif              # DEM reprojected to WGS84
-├── cook_hillshade_dark.tif        # RGBA hillshade GeoTIFF
-├── tiles_dark/                    # XYZ tile directory (z10–16)
+cache/
+├── putnam_dtm.tif                         # Raw 1m DEM (native projection)
+├── putnam_dtm_4326.tif                    # DEM reprojected to WGS84
+└── putnam_hillshade_dark_z9.0_*.tif       # Cached grayscale hillshade
+
+out/
+├── tiles-atak-dark-z9-16/                 # XYZ tile directory
 │   └── {z}/{x}/{y}.png
-├── cook-hillshade-dark.mbtiles    # Packed MBTiles archive
-├── cook-hillshade-dark.pmtiles    # PMTiles archive (--pmtiles only)
-├── cook.geojson                   # County boundary
-└── viewer.html                    # Interactive Leaflet viewer
+├── putnam-atak-dark-z9-16.mbtiles         # Packed MBTiles
+├── putnam.geojson                         # County boundary
+└── viewer.html                            # Local Leaflet preview
 ```
 
 ---
 
-## JSON output reference
+## Error handling
 
-### `ilhmp counties --json`
+- **Empty mbtiles (0 tiles):** Corrupt cached hillshade TIF. Delete the specific `*_hillshade_*.tif` from the cache dir and rerun with `--force-recompute`.
+- **Disk space:** Reserve ~5–10 GB per county (cache + tiles). McHenry ~419 GB cache from all 11 themes — clear between counties.
+- **Download failures:** ISGS downloads don't resume. Delete the partial `.tif` and retry.
+- **Missing DSM:** Some counties have DTM only (`dsm_url: null` in `ilhmp counties --json`). Use `--dem dtm`.
+- **AWS session expired:** `ilhmp publish` will fail at upload. Re-auth with `aws sso login` or `aws configure`.
+
+---
+
+## Infrastructure
+
+| Component | Host | Details |
+|-----------|------|---------|
+| Tile server | `tiles.exaggeratedrelief.com` (3.20.103.82) | EC2 t4g.small, mbtileserver + Caddy, `/data/tiles/` |
+| PMTiles CDN | `exaggeratedrelief.com` | CloudFront → `s3://exaggeratedrelief` |
+| EC2 workers | AWS us-east-2 | c7g.2xlarge spot, launched by `generate-aws.sh` |
+| SSH key | `~/.ssh/mapserver-ec2.pem` | Key pair name: `mapserver` |
+| S3 intermediates | `s3://ilhmp-dem-cache` | DEM + grayscale TIF cache for large counties |
+| Catalog | `web/catalog.json` | Source of truth for all published tiles |
+| Legacy tile server | `tiles.chicagooffline.com` | Same EC2, kept alive for existing ATAK configs |
+
+---
+
+## County catalog format (`ilhmp counties --json`)
 
 ```json
 [
@@ -146,76 +250,12 @@ cook-hillshade/
     "name": "Putnam",
     "fips": "17155",
     "district": "district4",
-    "year": "2012",
-    "dtm_url": "https://clearinghouse.isgs.illinois.edu/distribute/district4/putnam/2012/putn_dtm_2012.zip",
-    "dsm_url": "https://clearinghouse.isgs.illinois.edu/distribute/district4/putnam/2012/putn_dsm_2012.zip",
-    "dtm_imageserver_url": "https://data.isgs.illinois.edu/arcgis/rest/services/Elevation/IL_Putnam_DTM_2012/ImageServer",
-    "dsm_imageserver_url": "https://data.isgs.illinois.edu/arcgis/rest/services/Elevation/IL_Putnam_DSM_2012/ImageServer",
+    "year": "2022",
+    "dtm_url": "https://clearinghouse.isgs.illinois.edu/...",
+    "dsm_url": "https://clearinghouse.isgs.illinois.edu/...",
     "bounds": [-89.48, 41.10, -89.15, 41.32]
-  },
-  ...
+  }
 ]
 ```
 
-`bounds` is `[west, south, east, north]` in WGS84. It is `null` for counties without pre-computed bounds.
-
-### `ilhmp run <county> --json`
-
-```json
-{
-  "county": "Putnam",
-  "dem": "DTM",
-  "style": "dark",
-  "output_dir": "/abs/path/to/putnam-hillshade",
-  "files": {
-    "dem": "/abs/path/putnam_dtm.tif",
-    "dem_4326": "/abs/path/putnam_dtm_4326.tif",
-    "hillshade": "/abs/path/putnam_hillshade_dark.tif",
-    "tiles_dir": "/abs/path/tiles_dark",
-    "mbtiles": "/abs/path/putnam-hillshade-dark.mbtiles",
-    "viewer": "/abs/path/viewer.html",
-    "geojson": "/abs/path/putnam.geojson",
-    "pmtiles": null
-  }
-}
-```
-
-### `ilhmp boundary <county> --json`
-
-```json
-{"county": "cook", "geojson": "/abs/path/cook.geojson"}
-```
-
----
-
-## Error handling tips
-
-- **Disk space**: Reserve at least 10 GB per county before running. Cook county raw data is ~3.7 GB; intermediate TIFFs add another 5–8 GB.
-- **Download time**: ISGS downloads run 5–40 minutes for large counties. The tool does not resume partial downloads; if interrupted, delete the partial `.tif` and retry.
-- **Caching**: All intermediate files are cached. Re-running `ilhmp run` skips already-completed steps. To force a re-run, delete the specific output file.
-- **Missing DSM**: Some counties (e.g. Kane 2008) only have DTM data. Use `--dem dtm` for those. `ilhmp counties --json` shows `"dsm_url": null` when DSM is unavailable.
-- **Unknown county**: `ilhmp run` exits with code 1 and prints `{"error": "Unknown county: ..."}` in `--json` mode. Run `ilhmp counties --json` to get the full list of valid county IDs.
-- **URL verification**: Most county URLs follow the documented pattern and are not individually verified. If a download fails with HTTP 404, the ZIP filename or district may differ from the catalog — check the ISGS clearinghouse directly.
-- **Large rasters**: The hillshade step processes large rasters in 1000-row chunks to avoid OOM. It still requires enough RAM for one chunk (~width × 1000 × 4 bytes).
-
----
-
-## County catalog format
-
-The catalog is defined in `ilhmp/counties.py`. Each entry:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | str | Lookup key (lowercase, no spaces) |
-| `name` | str | Display name |
-| `fips` | str | 5-digit Illinois FIPS code |
-| `district` | str | ISGS district (`district1`–`district9`) |
-| `year` | str | Survey year |
-| `dtm_zip` | str\|None | ZIP filename for bare-earth DTM |
-| `dsm_zip` | str\|None | ZIP filename for surface DSM |
-| `dtm_url` | str | Full clearinghouse download URL (built at runtime) |
-| `dsm_url` | str\|None | Full DSM URL, or absent if unavailable |
-| `dtm_imageserver_url` | str | ArcGIS ImageServer REST URL |
-| `bounds` | list\|None | `[west, south, east, north]` in WGS84, if known |
-
-District assignments follow ISGS geographic regions: district1 = NE IL / Chicago metro, districts 2–3 = N/NW IL, district4 = central, district5 = east-central, district6 = western, districts 7–9 = southern IL.
+`bounds` is `[west, south, east, north]` in WGS84, null if unknown.
