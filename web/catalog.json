@@ -1660,6 +1660,126 @@
           "pmtiles": "tiles/mchenry-tactical-z9-16.pmtiles",
           "pmtiles_size_mb": 1049,
           "generated_at": "2026-05-14T00:00:00Z"
+        },
+        {
+          "id": "mchenry-grayscale-z9-16",
+          "theme": "grayscale",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "size_mb": 931.8,
+          "pmtiles": "tiles/mchenry-grayscale-z9-16.pmtiles",
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/mchenry-themes-9x/grayscale/mchenry-grayscale-z9-16.mbtiles",
+          "generated_at": "2026-05-16T01:36:40Z"
+        },
+        {
+          "id": "mchenry-simmon-z9-16",
+          "theme": "simmon",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "size_mb": 1152.1,
+          "pmtiles": "tiles/mchenry-simmon-z9-16.pmtiles",
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/mchenry-themes-9x/simmon/mchenry-simmon-z9-16.mbtiles",
+          "generated_at": "2026-05-16T01:36:40Z"
+        },
+        {
+          "id": "mchenry-simmon-light-z9-16",
+          "theme": "simmon-light",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "size_mb": 1298.4,
+          "pmtiles": "tiles/mchenry-simmon-light-z9-16.pmtiles",
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/mchenry-themes-9x/simmon-light/mchenry-simmon-light-z9-16.mbtiles",
+          "generated_at": "2026-05-16T01:36:40Z"
+        },
+        {
+          "id": "mchenry-flat-terrain-z9-16",
+          "theme": "flat-terrain",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "size_mb": 1152.1,
+          "pmtiles": "tiles/mchenry-flat-terrain-z9-16.pmtiles",
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/mchenry-themes-9x/flat-terrain/mchenry-flat-terrain-z9-16.mbtiles",
+          "generated_at": "2026-05-16T01:36:40Z"
+        },
+        {
+          "id": "mchenry-vivid-z9-16",
+          "theme": "vivid",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "size_mb": 1477.9,
+          "pmtiles": "tiles/mchenry-vivid-z9-16.pmtiles",
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/mchenry-themes-9x/vivid/mchenry-vivid-z9-16.mbtiles",
+          "generated_at": "2026-05-16T01:36:40Z"
+        },
+        {
+          "id": "mchenry-vivid-elevation-z9-16",
+          "theme": "vivid-elevation",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "size_mb": 1055.8,
+          "pmtiles": "tiles/mchenry-vivid-elevation-z9-16.pmtiles",
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/mchenry-themes-9x/vivid-elevation/mchenry-vivid-elevation-z9-16.mbtiles",
+          "generated_at": "2026-05-16T01:36:40Z"
+        },
+        {
+          "id": "mchenry-cool-z9-16",
+          "theme": "cool",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "size_mb": 1229.1,
+          "pmtiles": "tiles/mchenry-cool-z9-16.pmtiles",
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/mchenry-themes-9x/cool/mchenry-cool-z9-16.mbtiles",
+          "generated_at": "2026-05-16T01:36:40Z"
+        },
+        {
+          "id": "mchenry-cool-elevation-z9-16",
+          "theme": "cool-elevation",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "size_mb": 1036.4,
+          "pmtiles": "tiles/mchenry-cool-elevation-z9-16.pmtiles",
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/mchenry-themes-9x/cool-elevation/mchenry-cool-elevation-z9-16.mbtiles",
+          "generated_at": "2026-05-16T01:36:40Z"
         }
       ],
       "center": [
@@ -2063,7 +2183,8 @@
           "tile_count": 4728,
           "size_mb": 209.8,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/atak-dark/putnam-atak-dark-z9-16.mbtiles",
-          "generated_at": "2026-05-13T22:23:55Z"
+          "generated_at": "2026-05-13T22:23:55Z",
+          "pmtiles": "tiles/putnam-atak-dark-9x.pmtiles"
         },
         {
           "id": "putnam-atak-light-z9-16",
@@ -2078,7 +2199,8 @@
           "tile_count": 4728,
           "size_mb": 216.6,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/atak-light/putnam-atak-light-z9-16.mbtiles",
-          "generated_at": "2026-05-13T22:23:55Z"
+          "generated_at": "2026-05-13T22:23:55Z",
+          "pmtiles": "tiles/putnam-atak-light-autox.pmtiles"
         },
         {
           "id": "putnam-cool-elevation-z9-16",
@@ -2093,7 +2215,8 @@
           "tile_count": 3548,
           "size_mb": 186.8,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/cool-elevation/putnam-cool-elevation-z9-16.mbtiles",
-          "generated_at": "2026-05-13T22:23:56Z"
+          "generated_at": "2026-05-13T22:23:56Z",
+          "pmtiles": "tiles/putnam-cool-elevation-z9-16.pmtiles"
         },
         {
           "id": "putnam-cool-z9-16",
@@ -2108,7 +2231,8 @@
           "tile_count": 4728,
           "size_mb": 234.9,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/cool/putnam-cool-z9-16.mbtiles",
-          "generated_at": "2026-05-13T22:23:56Z"
+          "generated_at": "2026-05-13T22:23:56Z",
+          "pmtiles": "tiles/putnam-cool-z9-16.pmtiles"
         },
         {
           "id": "putnam-flat-terrain-z9-16",
@@ -2123,7 +2247,8 @@
           "tile_count": 4728,
           "size_mb": 309.8,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/flat-terrain/putnam-flat-terrain-z9-16.mbtiles",
-          "generated_at": "2026-05-13T22:23:56Z"
+          "generated_at": "2026-05-13T22:23:56Z",
+          "pmtiles": "tiles/putnam-flat-terrain-z9-16.pmtiles"
         },
         {
           "id": "putnam-simmon-light-z9-16",
@@ -2138,7 +2263,8 @@
           "tile_count": 4728,
           "size_mb": 226.8,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/simmon-light/putnam-simmon-light-z9-16.mbtiles",
-          "generated_at": "2026-05-13T22:23:56Z"
+          "generated_at": "2026-05-13T22:23:56Z",
+          "pmtiles": "tiles/putnam-simmon-light-autox.pmtiles"
         },
         {
           "id": "putnam-simmon-z9-16",
@@ -2153,7 +2279,8 @@
           "tile_count": 4728,
           "size_mb": 219.5,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/simmon/putnam-simmon-z9-16.mbtiles",
-          "generated_at": "2026-05-13T22:23:57Z"
+          "generated_at": "2026-05-13T22:23:57Z",
+          "pmtiles": "tiles/putnam-simmon-autox.pmtiles"
         },
         {
           "id": "putnam-tactical-z9-16",
@@ -2168,7 +2295,8 @@
           "tile_count": 4728,
           "size_mb": 167.2,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/tactical/putnam-tactical-z9-16.mbtiles",
-          "generated_at": "2026-05-13T22:23:57Z"
+          "generated_at": "2026-05-13T22:23:57Z",
+          "pmtiles": "tiles/putnam-tactical-autox.pmtiles"
         },
         {
           "id": "putnam-vivid-elevation-z9-16",
@@ -2183,7 +2311,8 @@
           "tile_count": 3548,
           "size_mb": 204.5,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/vivid-elevation/putnam-vivid-elevation-z9-16.mbtiles",
-          "generated_at": "2026-05-13T22:23:57Z"
+          "generated_at": "2026-05-13T22:23:57Z",
+          "pmtiles": "tiles/putnam-vivid-elevation-z9-16.pmtiles"
         },
         {
           "id": "putnam-vivid-z9-16",
@@ -2198,7 +2327,8 @@
           "tile_count": 4728,
           "size_mb": 255.2,
           "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/putnam-themes/vivid/putnam-vivid-z9-16.mbtiles",
-          "generated_at": "2026-05-13T22:23:57Z"
+          "generated_at": "2026-05-13T22:23:57Z",
+          "pmtiles": "tiles/putnam-vivid-z9-16.pmtiles"
         },
         {
           "id": "putnam-tactical-9x-z9-16",
