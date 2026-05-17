@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Exaggerated Relief — Illinois Hillshade Maps</title>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            flex-shrink: 0;
+            z-index: 20;
+        }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        .header h1 .accent { color: #58a6ff; }
+        .header .subtitle {
+            font-size: 12px;
+            color: #8b949e;
+            display: none;
+        }
+        @media (min-width: 640px) { .header .subtitle { display: block; } }
+        .header-actions { display: flex; gap: 8px; }
+        .header-actions a {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            text-decoration: none;
+            font-size: 12px;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .header-actions a:hover { background: #30363d; border-color: #484f58; }
+
+        /* ── Main layout ── */
+        .main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ── Map panel ── */
+        .map-panel {
+            flex: 1;
+            position: relative;
+            min-width: 0;
+        }
+        #selector-map {
+            width: 100%;
+            height: 100%;
+        }
+        .map-hint {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            background: rgba(13,17,23,0.85);
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 11px;
+            color: #8b949e;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+        .map-legend {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            background: rgba(13,17,23,0.85);
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 11px;
+            color: #8b949e;
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .legend-dot.available { background: #3fb950; }
+        .legend-dot.missing   { background: #484f58; }
+
+        /* ── Config panel ── */
+        .config-panel {
+            width: 300px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            background: #161b22;
+            border-left: 1px solid #30363d;
+            overflow-y: auto;
+        }
+
+        .config-section {
+            padding: 14px 16px;
+            border-bottom: 1px solid #21262d;
+        }
+        .config-section:last-child { border-bottom: none; }
+
+        .config-label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #8b949e;
+            margin-bottom: 8px;
+        }
+
+        /* County dropdown */
+        select, input[type="number"] {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #e6edf3;
+            padding: 7px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 28px;
+        }
+        input[type="number"] {
+            background-image: none;
+            padding-right: 10px;
+        }
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+
+        /* Radio groups */
+        .radio-group {
+            display: flex;
+            gap: 6px;
+        }
+        .radio-group label {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 8px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #8b949e;
+            transition: all 0.15s;
+            user-select: none;
+        }
+        .radio-group input[type="radio"] { display: none; }
+        .radio-group input[type="radio"]:checked + span {
+            /* handled by JS adding .active class to label */
+        }
+        .radio-group label.active {
+            background: #1f6feb;
+            border-color: #388bfd;
+            color: #fff;
+        }
+        .radio-group label .avail-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        .radio-group label .avail-dot.has-tile { background: #3fb950; }
+        .radio-group label .avail-dot.no-tile  { background: #30363d; }
+        .radio-group label.active .avail-dot.no-tile { background: #6e7681; }
+        .radio-group-wrap {
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .radio-group-wrap label {
+            flex: unset;
+            padding: 5px 10px;
+        }
+        .radio-group label:hover:not(.active) {
+            background: #21262d;
+            border-color: #484f58;
+            color: #c9d1d9;
+        }
+
+        /* Zoom chips */
+        .zoom-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .zoom-chip {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 28px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            font-family: monospace;
+            color: #8b949e;
+            transition: all 0.15s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .zoom-chip:hover:not(.active) {
+            background: #21262d;
+            border-color: #484f58;
+            color: #c9d1d9;
+        }
+        .zoom-chip.active {
+            background: #1f6feb;
+            border-color: #388bfd;
+            color: #fff;
+        }
+        .zoom-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .zoom-actions button {
+            background: none;
+            border: none;
+            color: #58a6ff;
+            font-size: 10px;
+            cursor: pointer;
+            padding: 2px 4px;
+            font-family: inherit;
+        }
+        .zoom-actions button:hover { text-decoration: underline; }
+
+        /* Divider */
+        .divider {
+            height: 1px;
+            background: #21262d;
+            margin: 0 16px;
+        }
+
+        /* Status card */
+        .status-card {
+            margin: 0;
+        }
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-badge.available {
+            background: rgba(63, 185, 80, 0.15);
+            color: #3fb950;
+            border: 1px solid rgba(63, 185, 80, 0.3);
+        }
+        .status-badge.missing {
+            background: rgba(110, 118, 129, 0.15);
+            color: #8b949e;
+            border: 1px solid rgba(110, 118, 129, 0.3);
+        }
+
+        .tile-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        .meta-row {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            font-size: 12px;
+        }
+        .meta-key {
+            color: #8b949e;
+            min-width: 70px;
+            flex-shrink: 0;
+        }
+        .meta-val { color: #c9d1d9; }
+
+        /* Action buttons */
+        .action-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+            text-decoration: none;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .btn-primary {
+            background: #1f6feb;
+            border-color: #388bfd;
+            color: #fff;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #388bfd;
+        }
+        .btn-secondary {
+            background: #21262d;
+            border-color: #30363d;
+            color: #c9d1d9;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background: #30363d;
+            border-color: #484f58;
+        }
+        .btn-green {
+            background: rgba(63, 185, 80, 0.15);
+            border-color: rgba(63, 185, 80, 0.4);
+            color: #3fb950;
+        }
+        .btn-green:hover:not(:disabled) {
+            background: rgba(63, 185, 80, 0.25);
+        }
+
+        .generate-hint {
+            font-size: 11px;
+            color: #6e7681;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        /* ── Preview map ── */
+        .btn-active {
+            background: #da3633 !important;
+            border-color: #f85149 !important;
+        }
+
+        /* ── Stats bar ── */
+        .stats-bar {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 7px 20px;
+            background: #161b22;
+            border-top: 1px solid #30363d;
+            font-size: 11px;
+            color: #8b949e;
+            flex-shrink: 0;
+        }
+        .stats-bar .stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .stats-bar .stat strong { color: #e6edf3; }
+        .stats-separator { color: #30363d; }
+
+        /* ── Loading overlay ── */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: #0d1117;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            gap: 12px;
+        }
+        #loading-overlay.hidden { display: none; }
+        .spinner {
+            width: 32px; height: 32px;
+            border: 3px solid #30363d;
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 13px; color: #8b949e; }
+
+        /* ── Mobile: config panel → bottom sheet ── */
+        @media (max-width: 640px) {
+            .main { flex-direction: column; }
+
+            .config-panel {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid #30363d;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 30;
+                max-height: 55vh;
+                overflow-y: auto;
+                transform: translateY(calc(100% - 44px));
+                transition: transform 0.3s ease;
+                border-radius: 12px 12px 0 0;
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+            }
+            .config-panel.expanded {
+                transform: translateY(0);
+            }
+
+            .config-panel-handle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 10px 16px 6px;
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .config-panel-handle .grip {
+                width: 32px;
+                height: 4px;
+                border-radius: 2px;
+                background: #484f58;
+            }
+            .config-panel-handle .handle-label {
+                font-size: 11px;
+                color: #8b949e;
+                margin-left: 10px;
+            }
+
+            .map-panel { flex: 1; min-height: 0; }
+            .map-hint { display: none; }
+            .map-legend { bottom: 56px; font-size: 10px; padding: 5px 8px; }
+
+            .header h1 { font-size: 15px; }
+            .header { padding: 8px 14px; }
+            .header-actions a { padding: 4px 8px; font-size: 11px; }
+
+            .stats-bar { display: none; }
+
+            .config-section { padding: 10px 14px; }
+            .config-label { font-size: 9px; margin-bottom: 5px; }
+            .radio-group label { padding: 5px 6px; font-size: 11px; }
+            .radio-group-wrap label { padding: 4px 8px; font-size: 11px; }
+            select { font-size: 14px; padding: 8px 10px; }
+
+            .generate-hint { font-size: 10px; }
+        }
+
+        @media (min-width: 641px) {
+            .config-panel-handle { display: none; }
+        }
+
+        /* MapLibre overrides */
+        .maplibregl-ctrl-bottom-right { bottom: 48px !important; }
+        .maplibregl-ctrl-attrib { font-size: 9px !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading catalog…</div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1><span class="accent">Exaggerated</span> Relief</h1>
+            <span class="subtitle">Illinois hillshade maps — ISGS ILHMP LiDAR</span>
+        </div>
+        <div class="header-actions">
+            <a href="https://github.com/emuehlstein/illinois-hillshade-gen" target="_blank">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                GitHub
+            </a>
+            <a href="https://github.com/emuehlstein/illinois-hillshade-gen/blob/main/README.md" target="_blank">?</a>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <div class="main">
+
+        <!-- Illinois map (county selector) -->
+        <div class="map-panel">
+            <div id="selector-map"></div>
+            <div class="map-hint">Click a county to select it</div>
+            <div class="map-legend">
+                <div class="legend-item"><div class="legend-dot available"></div> Tiles available</div>
+                <div class="legend-item"><div class="legend-dot missing"></div> Not yet generated</div>
+            </div>
+        </div>
+
+        <!-- Configuration panel -->
+        <div class="config-panel" id="config-panel">
+            <div class="config-panel-handle" id="config-handle">
+                <div class="grip"></div>
+                <span class="handle-label">Controls ▲</span>
+            </div>
+
+            <!-- County -->
+            <div class="config-section">
+                <div class="config-label">County</div>
+                <select id="county-select">
+                    <option value="">— select a county —</option>
+                </select>
+            </div>
+
+            <!-- DEM type -->
+            <div class="config-section">
+                <div class="config-label">DEM Source</div>
+                <div class="radio-group" id="dem-group">
+                    <label class="active" data-val="dtm">
+                        <input type="radio" name="dem" value="dtm" checked />
+                        <span>DTM</span><span class="avail-dot no-tile"></span>
+                    </label>
+                    <label data-val="dsm">
+                        <input type="radio" name="dem" value="dsm" />
+                        <span>DSM</span><span class="avail-dot no-tile"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Theme -->
+            <div class="config-section">
+                <div class="config-label">Theme</div>
+                <div class="radio-group radio-group-wrap" id="theme-group">
+                    <label data-val="simmon"><span>Simmon</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="simmon-light"><span>Simmon Light</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="atak-dark"><span>ATAK Dark</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="atak-light"><span>ATAK Light</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="tactical"><span>Tactical</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="flat-terrain"><span>Flat Terrain</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="vivid"><span>Vivid</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="cool"><span>Cool</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="vivid-elevation"><span>Vivid Elev</span><span class="avail-dot no-tile"></span></label>
+                    <label class="active" data-val="cool-elevation"><span>Cool Elev</span><span class="avail-dot no-tile"></span></label>
+                    <label data-val="grayscale"><span>Grayscale</span><span class="avail-dot no-tile"></span></label>
+                </div>
+            </div>
+
+            <!-- Exaggeration -->
+            <div class="config-section">
+                <div class="config-label">Vertical Exaggeration</div>
+                <div class="radio-group" id="exag-group">
+                    <label data-val="auto">
+                        <input type="radio" name="exag" value="auto" />
+                        <span>Auto</span><span class="avail-dot no-tile"></span>
+                    </label>
+                    <label data-val="3">
+                        <input type="radio" name="exag" value="3" />
+                        <span>3×</span><span class="avail-dot no-tile"></span>
+                    </label>
+                    <label class="active" data-val="9">
+                        <input type="radio" name="exag" value="9" checked />
+                        <span>9×</span><span class="avail-dot no-tile"></span>
+                    </label>
+                    <label data-val="15">
+                        <input type="radio" name="exag" value="15" />
+                        <span>15×</span><span class="avail-dot no-tile"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Zoom levels -->
+            <div class="config-section">
+                <div class="config-label">Zoom Levels</div>
+                <div class="zoom-chips" id="zoom-chips"></div>
+                <div class="zoom-actions">
+                    <button onclick="zoomSelectRange(10,16)">10–16</button>
+                    <button onclick="zoomSelectRange(10,18)">10–18</button>
+                    <button onclick="zoomSelectAll()">All</button>
+                    <button onclick="zoomSelectNone()">None</button>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Status card -->
+            <div class="config-section status-card" id="status-card">
+                <div class="config-label">Status</div>
+                <div id="status-content">
+                    <div style="color: #6e7681; font-size: 12px;">Select a county to see availability.</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+
+    <!-- Stats bar -->
+    <div class="stats-bar" id="stats-bar">
+        <div class="stat"><strong id="stat-counties">—</strong> counties</div>
+        <span class="stats-separator">|</span>
+        <div class="stat"><strong id="stat-tiles">—</strong> tile sets available</div>
+        <span class="stats-separator">|</span>
+        <div class="stat"><strong id="stat-size">—</strong> total</div>
+        <div class="stat" style="margin-left:auto;">z<strong id="stat-zoom">—</strong></div>
+        <span class="stats-separator">|</span>
+        <div class="stat" style="margin-left: auto; color: #6e7681;">PMTiles via S3 · MapLibre GL JS 5.6.0</div>
+    </div>
+
+    <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/pmtiles@4.4.0/dist/pmtiles.js"></script>
+    <script src="configurator.js"></script>
+</body>
+</html>
