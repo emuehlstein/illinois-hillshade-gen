@@ -38,6 +38,7 @@ function readHash() {
   const params = new URLSearchParams(window.location.hash.slice(1));
   return {
     county: params.get('county') || null,
+    theme:  params.get('theme')  || null,
     z:      params.has('z')   ? parseFloat(params.get('z'))   : null,
     lat:    params.has('lat') ? parseFloat(params.get('lat')) : null,
     lng:    params.has('lng') ? parseFloat(params.get('lng')) : null,
@@ -46,10 +47,12 @@ function readHash() {
 
 function writeHash(opts = {}) {
   const params = new URLSearchParams();
-  const county = opts.county ?? selectedId;
+  const county = opts.county  ?? selectedId;
+  const theme  = opts.theme   ?? activeTheme;
   const center = map ? map.getCenter() : null;
   const zoom   = map ? map.getZoom()   : null;
   if (county) params.set('county', county);
+  if (theme)  params.set('theme',  theme);
   if (zoom   != null) params.set('z',   zoom.toFixed(2));
   if (center != null) { params.set('lat', center.lat.toFixed(5)); params.set('lng', center.lng.toFixed(5)); }
   const hash = '#' + params.toString();
@@ -258,6 +261,8 @@ function onMapLoad() {
     map.jumpTo({ center: [initial.lng, initial.lat], zoom: initial.z ?? IL_ZOOM });
   }
   if (initial.county && catalog.counties[initial.county]) {
+    // Restore theme before selectCounty so it picks the right tile
+    if (initial.theme) activeTheme = initial.theme;
     // Wait a tick so the map source is ready for feature-state
     requestAnimationFrame(() => selectCounty(initial.county));
   }
@@ -423,6 +428,7 @@ function renderDrawer(countyId) {
       activeTheme = theme;
       body.querySelectorAll('.theme-chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
+      writeHash();
       const tile = getBestTile(countyId, theme);
       if (tile) showPreview(countyId, tile);
     });
