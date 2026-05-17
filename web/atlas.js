@@ -149,7 +149,10 @@ function buildMap() {
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
   map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
-  map.on('load', onMapLoad);
+  const zoomVal = document.getElementById('zoom-val');
+  const updateZoom = () => { if (zoomVal) zoomVal.textContent = map.getZoom().toFixed(1); };
+  map.on('zoom', updateZoom);
+  map.on('load', () => { updateZoom(); onMapLoad(); });
 }
 
 function onMapLoad() {
