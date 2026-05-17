@@ -2,656 +2,732 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Exaggerated Relief — Illinois Hillshade Maps</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Exaggerated Relief — Illinois Terrain Atlas</title>
+    <meta name="description" content="A growing terrain archive of Illinois — hillshade tiles generated from ISGS LiDAR, served via PMTiles. Click any county to view, download, or generate." />
+    <link rel="preconnect" href="https://exaggeratedrelief.s3.us-east-2.amazonaws.com" crossorigin />
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
     <style>
+        :root {
+            --bg: #07090d;
+            --bg-elev: #0e1219;
+            --panel: rgba(14, 18, 25, 0.78);
+            --panel-border: rgba(255, 255, 255, 0.07);
+            --panel-border-strong: rgba(255, 255, 255, 0.14);
+            --ink: #e8edf3;
+            --ink-soft: #9aa5b2;
+            --ink-faint: #5e6975;
+            --accent: #6aa9ff;
+            --accent-soft: rgba(106, 169, 255, 0.18);
+
+            /* status colors — subdued, terrain-friendly */
+            --st-available:  #4f8a64;
+            --st-partial:    #c79744;
+            --st-generating: #6aa9ff;
+            --st-failed:     #c8584d;
+            --st-missing:    #2a313a;
+
+            --st-available-glow:  rgba(79, 138, 100, 0.45);
+            --st-partial-glow:    rgba(199, 151, 68, 0.45);
+            --st-generating-glow: rgba(106, 169, 255, 0.55);
+            --st-failed-glow:     rgba(200, 88, 77, 0.45);
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: #0d1117;
-            color: #e6edf3;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* ── Header ── */
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 20px;
-            background: #161b22;
-            border-bottom: 1px solid #30363d;
-            flex-shrink: 0;
-            z-index: 20;
-        }
-        .header-left { display: flex; align-items: center; gap: 10px; }
-        .header h1 {
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-        }
-        .header h1 .accent { color: #58a6ff; }
-        .header .subtitle {
-            font-size: 12px;
-            color: #8b949e;
-            display: none;
-        }
-        @media (min-width: 640px) { .header .subtitle { display: block; } }
-        .header-actions { display: flex; gap: 8px; }
-        .header-actions a {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 5px 10px;
-            background: #21262d;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            color: #c9d1d9;
-            text-decoration: none;
-            font-size: 12px;
-            transition: background 0.15s, border-color 0.15s;
-        }
-        .header-actions a:hover { background: #30363d; border-color: #484f58; }
-
-        /* ── Main layout ── */
-        .main {
-            display: flex;
-            flex: 1;
-            min-height: 0;
-        }
-
-        /* ── Map panel ── */
-        .map-panel {
-            flex: 1;
-            position: relative;
-            min-width: 0;
-        }
-        #selector-map {
-            width: 100%;
+        html, body {
             height: 100%;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            font-feature-settings: 'cv11', 'ss01';
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
         }
-        .map-hint {
-            position: absolute;
-            bottom: 16px;
-            left: 16px;
-            background: rgba(13,17,23,0.85);
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 11px;
-            color: #8b949e;
+
+        a { color: inherit; text-decoration: none; }
+
+        /* ── Map: the hero ─────────────────────────────────────── */
+        #map {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+        #map .maplibregl-ctrl-bottom-right { bottom: 8px !important; right: 8px !important; }
+        #map .maplibregl-ctrl-attrib {
+            font-size: 9px !important;
+            background: rgba(7, 9, 13, 0.6) !important;
+            color: var(--ink-faint) !important;
+        }
+        #map .maplibregl-ctrl-attrib a { color: var(--ink-soft) !important; }
+
+        /* ── Top bar ───────────────────────────────────────────── */
+        .topbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 10;
+            padding: 18px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             pointer-events: none;
-            backdrop-filter: blur(4px);
+            background: linear-gradient(to bottom, rgba(7, 9, 13, 0.65), transparent);
         }
-        .map-legend {
-            position: absolute;
-            bottom: 16px;
-            right: 16px;
-            background: rgba(13,17,23,0.85);
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            padding: 8px 10px;
-            font-size: 11px;
-            color: #8b949e;
-            backdrop-filter: blur(4px);
+        .topbar > * { pointer-events: auto; }
+
+        .brand {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
+            align-items: baseline;
+            gap: 10px;
+            letter-spacing: -0.01em;
         }
-        .legend-item { display: flex; align-items: center; gap: 6px; }
-        .legend-dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        .legend-dot.available { background: #3fb950; }
-        .legend-dot.missing   { background: #484f58; }
-
-        /* ── Config panel ── */
-        .config-panel {
-            width: 300px;
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            background: #161b22;
-            border-left: 1px solid #30363d;
-            overflow-y: auto;
-        }
-
-        .config-section {
-            padding: 14px 16px;
-            border-bottom: 1px solid #21262d;
-        }
-        .config-section:last-child { border-bottom: none; }
-
-        .config-label {
-            font-size: 10px;
+        .brand .mark {
+            font-size: 17px;
             font-weight: 600;
+            color: var(--ink);
+        }
+        .brand .mark .em { color: var(--accent); font-weight: 500; }
+        .brand .tag {
+            font-size: 11px;
+            color: var(--ink-faint);
+            font-weight: 400;
+            letter-spacing: 0.02em;
+        }
+        @media (max-width: 640px) { .brand .tag { display: none; } }
+
+        .topbar-actions { display: flex; gap: 6px; }
+        .topbar-actions a, .topbar-actions button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--ink-soft);
+            background: rgba(14, 18, 25, 0.6);
+            border: 1px solid var(--panel-border);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: color 0.2s, background 0.2s, border-color 0.2s;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .topbar-actions a:hover, .topbar-actions button:hover {
+            color: var(--ink);
+            background: rgba(20, 26, 36, 0.85);
+            border-color: var(--panel-border-strong);
+        }
+        .topbar-actions svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+        /* ── Status legend (bottom-left) ───────────────────────── */
+        .legend {
+            position: fixed;
+            left: 24px;
+            bottom: 24px;
+            z-index: 8;
+            padding: 14px 16px;
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            min-width: 180px;
+        }
+        .legend-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--ink-faint);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .legend-items {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 12px;
+            color: var(--ink-soft);
+            cursor: default;
+        }
+        .legend-row .count {
+            margin-left: auto;
+            font-variant-numeric: tabular-nums;
+            color: var(--ink-faint);
+            font-size: 11px;
+        }
+        .legend-swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
+        }
+
+        /* Animation for generating state */
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 0.55; }
+            50% { opacity: 1; }
+        }
+        .legend-swatch.generating {
+            animation: pulse-soft 1.8s ease-in-out infinite;
+        }
+
+        /* ── Coverage stats (bottom-right) ─────────────────────── */
+        .coverage {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 7;
+            padding: 14px 18px;
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 160px;
+        }
+        .coverage-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            justify-content: space-between;
+        }
+        .coverage-row .num {
+            font-size: 18px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            color: var(--ink);
+        }
+        .coverage-row .lbl {
+            font-size: 11px;
+            color: var(--ink-faint);
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: #8b949e;
-            margin-bottom: 8px;
+        }
+        .coverage-bar {
+            height: 4px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+            display: flex;
+        }
+        .coverage-bar > div {
+            height: 100%;
+            transition: width 0.6s ease;
+        }
+        @media (max-width: 640px) {
+            .coverage { right: 12px; bottom: 12px; min-width: 130px; padding: 10px 14px; }
+            .legend { left: 12px; bottom: 12px; min-width: 150px; padding: 10px 12px; }
+            .legend-row { font-size: 11px; }
         }
 
-        /* County dropdown */
-        select, input[type="number"] {
-            width: 100%;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            color: #e6edf3;
-            padding: 7px 10px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-family: inherit;
-            appearance: none;
-            -webkit-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 10px center;
-            padding-right: 28px;
-        }
-        input[type="number"] {
-            background-image: none;
-            padding-right: 10px;
-        }
-        select:focus, input[type="number"]:focus {
-            outline: none;
-            border-color: #58a6ff;
-            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
-        }
-
-        /* Radio groups */
-        .radio-group {
-            display: flex;
-            gap: 6px;
-        }
-        .radio-group label {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 6px 8px;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            cursor: pointer;
+        /* ── Hover tooltip ─────────────────────────────────────── */
+        .hover-tip {
+            position: fixed;
+            z-index: 12;
+            padding: 8px 12px;
+            background: rgba(7, 9, 13, 0.92);
+            border: 1px solid var(--panel-border-strong);
+            border-radius: 8px;
             font-size: 12px;
-            color: #8b949e;
-            transition: all 0.15s;
-            user-select: none;
+            color: var(--ink);
+            pointer-events: none;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.12s ease;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
         }
-        .radio-group input[type="radio"] { display: none; }
-        .radio-group input[type="radio"]:checked + span {
-            /* handled by JS adding .active class to label */
+        .hover-tip.show { opacity: 1; }
+        .hover-tip .name {
+            font-weight: 600;
+            letter-spacing: -0.01em;
         }
-        .radio-group label.active {
-            background: #1f6feb;
-            border-color: #388bfd;
-            color: #fff;
-        }
-        .radio-group label .avail-dot {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            margin-left: 4px;
-            vertical-align: middle;
-        }
-        .radio-group label .avail-dot.has-tile { background: #3fb950; }
-        .radio-group label .avail-dot.no-tile  { background: #30363d; }
-        .radio-group label.active .avail-dot.no-tile { background: #6e7681; }
-        .radio-group-wrap {
-            flex-wrap: wrap;
-            gap: 4px;
-        }
-        .radio-group-wrap label {
-            flex: unset;
-            padding: 5px 10px;
-        }
-        .radio-group label:hover:not(.active) {
-            background: #21262d;
-            border-color: #484f58;
-            color: #c9d1d9;
-        }
-
-        /* Zoom chips */
-        .zoom-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-        }
-        .zoom-chip {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 28px;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 11px;
-            font-family: monospace;
-            color: #8b949e;
-            transition: all 0.15s;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .zoom-chip:hover:not(.active) {
-            background: #21262d;
-            border-color: #484f58;
-            color: #c9d1d9;
-        }
-        .zoom-chip.active {
-            background: #1f6feb;
-            border-color: #388bfd;
-            color: #fff;
-        }
-        .zoom-actions {
-            display: flex;
-            gap: 6px;
-            margin-top: 6px;
-        }
-        .zoom-actions button {
-            background: none;
-            border: none;
-            color: #58a6ff;
-            font-size: 10px;
-            cursor: pointer;
-            padding: 2px 4px;
-            font-family: inherit;
-        }
-        .zoom-actions button:hover { text-decoration: underline; }
-
-        /* Divider */
-        .divider {
-            height: 1px;
-            background: #21262d;
-            margin: 0 16px;
-        }
-
-        /* Status card */
-        .status-card {
-            margin: 0;
-        }
-        .status-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-        .status-badge {
+        .hover-tip .status {
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            padding: 3px 8px;
-            border-radius: 20px;
+            margin-left: 8px;
+            color: var(--ink-soft);
             font-size: 11px;
-            font-weight: 600;
+            text-transform: lowercase;
         }
-        .status-badge.available {
-            background: rgba(63, 185, 80, 0.15);
-            color: #3fb950;
-            border: 1px solid rgba(63, 185, 80, 0.3);
-        }
-        .status-badge.missing {
-            background: rgba(110, 118, 129, 0.15);
-            color: #8b949e;
-            border: 1px solid rgba(110, 118, 129, 0.3);
+        .hover-tip .status-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
         }
 
-        .tile-meta {
+        /* ── Drawer (floating right panel) ─────────────────────── */
+        .drawer {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            bottom: 80px;
+            width: 380px;
+            max-width: calc(100vw - 40px);
+            z-index: 9;
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            margin-bottom: 12px;
+            overflow: hidden;
+            transform: translateX(calc(100% + 32px));
+            opacity: 0;
+            transition: transform 0.32s cubic-bezier(0.32, 0.72, 0.27, 0.99), opacity 0.2s;
+            pointer-events: none;
         }
-        .meta-row {
+        .drawer.open {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .drawer-head {
+            padding: 18px 20px 14px;
+            border-bottom: 1px solid var(--panel-border);
             display: flex;
-            align-items: baseline;
-            gap: 6px;
-            font-size: 12px;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
         }
-        .meta-key {
-            color: #8b949e;
-            min-width: 70px;
+        .drawer-head .title {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+        .drawer-head .subtitle {
+            font-size: 11px;
+            color: var(--ink-faint);
+            margin-top: 4px;
+            letter-spacing: 0.04em;
+        }
+        .drawer-close {
+            background: none;
+            border: none;
+            color: var(--ink-faint);
+            cursor: pointer;
+            width: 28px; height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.15s, background 0.15s;
             flex-shrink: 0;
         }
-        .meta-val { color: #c9d1d9; }
+        .drawer-close:hover { color: var(--ink); background: rgba(255,255,255,0.04); }
 
-        /* Action buttons */
+        .drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px 20px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.1) transparent;
+        }
+        .drawer-body::-webkit-scrollbar { width: 6px; }
+        .drawer-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border: 1px solid;
+        }
+        .status-pill .dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+        }
+        .status-pill.available  { color: var(--st-available);  background: rgba(79, 138, 100, 0.12);  border-color: rgba(79, 138, 100, 0.35); }
+        .status-pill.partial    { color: var(--st-partial);    background: rgba(199, 151, 68, 0.12); border-color: rgba(199, 151, 68, 0.35); }
+        .status-pill.generating { color: var(--st-generating); background: rgba(106, 169, 255, 0.12); border-color: rgba(106, 169, 255, 0.35); }
+        .status-pill.failed     { color: var(--st-failed);     background: rgba(200, 88, 77, 0.12);  border-color: rgba(200, 88, 77, 0.35); }
+        .status-pill.missing    { color: var(--ink-soft);      background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.12); }
+        .status-pill.available .dot  { background: var(--st-available); }
+        .status-pill.partial .dot    { background: var(--st-partial); }
+        .status-pill.generating .dot { background: var(--st-generating); animation: pulse-soft 1.8s ease-in-out infinite; }
+        .status-pill.failed .dot     { background: var(--st-failed); }
+        .status-pill.missing .dot    { background: var(--ink-faint); }
+
+        .section-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--ink-faint);
+            margin: 18px 0 8px;
+            font-weight: 600;
+        }
+        .section-label:first-child { margin-top: 4px; }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: max-content 1fr;
+            gap: 6px 14px;
+            font-size: 13px;
+        }
+        .meta-grid .k { color: var(--ink-faint); white-space: nowrap; }
+        .meta-grid .v { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+        .theme-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .theme-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--ink-soft);
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--panel-border);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .theme-chip:hover {
+            color: var(--ink);
+            background: rgba(106, 169, 255, 0.08);
+            border-color: rgba(106, 169, 255, 0.3);
+        }
+        .theme-chip.active {
+            color: var(--ink);
+            background: var(--accent-soft);
+            border-color: rgba(106, 169, 255, 0.5);
+        }
+        .theme-chip .dot {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: var(--st-available);
+        }
+
+        .preview-thumb {
+            width: 100%;
+            height: 140px;
+            border-radius: 10px;
+            background: #0a0d12;
+            border: 1px solid var(--panel-border);
+            overflow: hidden;
+            margin-top: 4px;
+            position: relative;
+        }
+        .preview-thumb .ph {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-faint);
+            font-size: 11px;
+            letter-spacing: 0.05em;
+        }
+        .preview-thumb .mini-map {
+            width: 100%;
+            height: 100%;
+        }
+
         .action-row {
             display: flex;
+            flex-direction: column;
             gap: 8px;
-            flex-wrap: wrap;
+            margin-top: 16px;
         }
         .btn {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 7px 12px;
-            border-radius: 6px;
-            font-size: 12px;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
             font-weight: 500;
             font-family: inherit;
             cursor: pointer;
             border: 1px solid transparent;
-            transition: all 0.15s;
+            transition: all 0.18s;
             text-decoration: none;
+            width: 100%;
         }
-        .btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
+        .btn svg { width: 14px; height: 14px; }
         .btn-primary {
-            background: #1f6feb;
-            border-color: #388bfd;
-            color: #fff;
+            background: var(--accent);
+            color: #0a0d12;
+            border-color: var(--accent);
         }
-        .btn-primary:hover:not(:disabled) {
-            background: #388bfd;
+        .btn-primary:hover {
+            background: #84baff;
+            border-color: #84baff;
+            box-shadow: 0 4px 16px rgba(106, 169, 255, 0.25);
         }
         .btn-secondary {
-            background: #21262d;
-            border-color: #30363d;
-            color: #c9d1d9;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--ink);
+            border-color: var(--panel-border-strong);
         }
-        .btn-secondary:hover:not(:disabled) {
-            background: #30363d;
-            border-color: #484f58;
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
         }
-        .btn-green {
-            background: rgba(63, 185, 80, 0.15);
-            border-color: rgba(63, 185, 80, 0.4);
-            color: #3fb950;
+        .btn-ghost {
+            background: transparent;
+            color: var(--ink-soft);
+            border-color: var(--panel-border);
         }
-        .btn-green:hover:not(:disabled) {
-            background: rgba(63, 185, 80, 0.25);
+        .btn-ghost:hover { color: var(--ink); border-color: var(--panel-border-strong); }
+
+        .btn-generate {
+            background: rgba(79, 138, 100, 0.12);
+            color: var(--st-available);
+            border-color: rgba(79, 138, 100, 0.35);
+            font-weight: 600;
+        }
+        .btn-generate:hover {
+            background: rgba(79, 138, 100, 0.2);
+            border-color: rgba(79, 138, 100, 0.55);
+            box-shadow: 0 4px 20px rgba(79, 138, 100, 0.2);
         }
 
-        .generate-hint {
+        .progress {
+            margin-top: 10px;
+            padding: 12px;
+            border-radius: 10px;
+            background: rgba(106, 169, 255, 0.06);
+            border: 1px solid rgba(106, 169, 255, 0.2);
+        }
+        .progress .label {
             font-size: 11px;
-            color: #6e7681;
-            margin-top: 8px;
-            line-height: 1.5;
-        }
-
-        /* ── Preview map ── */
-        .btn-active {
-            background: #da3633 !important;
-            border-color: #f85149 !important;
-        }
-
-        /* ── Stats bar ── */
-        .stats-bar {
+            color: var(--accent);
+            font-weight: 600;
+            letter-spacing: 0.05em;
             display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 7px 20px;
-            background: #161b22;
-            border-top: 1px solid #30363d;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .progress .bar {
+            height: 4px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress .bar > div {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #84baff);
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+        .progress .phase {
             font-size: 11px;
-            color: #8b949e;
-            flex-shrink: 0;
+            color: var(--ink-soft);
+            margin-top: 6px;
+            font-family: 'SF Mono', Menlo, monospace;
         }
-        .stats-bar .stat {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .stats-bar .stat strong { color: #e6edf3; }
-        .stats-separator { color: #30363d; }
 
-        /* ── Loading overlay ── */
-        #loading-overlay {
+        .failure-msg {
+            margin-top: 10px;
+            padding: 12px;
+            border-radius: 10px;
+            background: rgba(200, 88, 77, 0.06);
+            border: 1px solid rgba(200, 88, 77, 0.25);
+            font-size: 12px;
+            color: var(--ink-soft);
+        }
+        .failure-msg .head {
+            color: var(--st-failed);
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .missing-hint {
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--ink-soft);
+            line-height: 1.55;
+        }
+        .est-row {
+            display: flex;
+            gap: 14px;
+            margin-top: 10px;
+            font-size: 11px;
+            color: var(--ink-faint);
+        }
+        .est-row .est {
+            display: flex;
+            gap: 4px;
+            align-items: baseline;
+        }
+        .est-row .est strong { color: var(--ink); font-weight: 600; }
+
+        /* mobile: drawer becomes bottom sheet */
+        @media (max-width: 700px) {
+            .drawer {
+                top: auto;
+                right: 0;
+                left: 0;
+                bottom: 0;
+                width: 100%;
+                max-width: 100%;
+                max-height: 75vh;
+                border-radius: 16px 16px 0 0;
+                transform: translateY(100%);
+            }
+            .drawer.open {
+                transform: translateY(0);
+            }
+            .topbar { padding: 12px 16px; }
+        }
+
+        /* ── Loading overlay ─────────────────────────────────── */
+        #boot {
             position: fixed;
             inset: 0;
-            background: #0d1117;
+            z-index: 100;
+            background: var(--bg);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 100;
-            gap: 12px;
+            gap: 14px;
+            transition: opacity 0.3s;
         }
-        #loading-overlay.hidden { display: none; }
-        .spinner {
-            width: 32px; height: 32px;
-            border: 3px solid #30363d;
-            border-top-color: #58a6ff;
+        #boot.gone { opacity: 0; pointer-events: none; }
+        #boot .spinner {
+            width: 28px; height: 28px;
+            border: 2px solid rgba(255,255,255,0.08);
+            border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
+        #boot .label {
+            font-size: 12px;
+            letter-spacing: 0.06em;
+            color: var(--ink-faint);
+            text-transform: uppercase;
+        }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-text { font-size: 13px; color: #8b949e; }
 
-        /* ── Mobile: config panel → bottom sheet ── */
-        @media (max-width: 640px) {
-            .main { flex-direction: column; }
-
-            .config-panel {
-                width: 100%;
-                border-left: none;
-                border-top: 1px solid #30363d;
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                z-index: 30;
-                max-height: 55vh;
-                overflow-y: auto;
-                transform: translateY(calc(100% - 44px));
-                transition: transform 0.3s ease;
-                border-radius: 12px 12px 0 0;
-                box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
-            }
-            .config-panel.expanded {
-                transform: translateY(0);
-            }
-
-            .config-panel-handle {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 10px 16px 6px;
-                cursor: pointer;
-                -webkit-tap-highlight-color: transparent;
-            }
-            .config-panel-handle .grip {
-                width: 32px;
-                height: 4px;
-                border-radius: 2px;
-                background: #484f58;
-            }
-            .config-panel-handle .handle-label {
-                font-size: 11px;
-                color: #8b949e;
-                margin-left: 10px;
-            }
-
-            .map-panel { flex: 1; min-height: 0; }
-            .map-hint { display: none; }
-            .map-legend { bottom: 56px; font-size: 10px; padding: 5px 8px; }
-
-            .header h1 { font-size: 15px; }
-            .header { padding: 8px 14px; }
-            .header-actions a { padding: 4px 8px; font-size: 11px; }
-
-            .stats-bar { display: none; }
-
-            .config-section { padding: 10px 14px; }
-            .config-label { font-size: 9px; margin-bottom: 5px; }
-            .radio-group label { padding: 5px 6px; font-size: 11px; }
-            .radio-group-wrap label { padding: 4px 8px; font-size: 11px; }
-            select { font-size: 14px; padding: 8px 10px; }
-
-            .generate-hint { font-size: 10px; }
-        }
-
-        @media (min-width: 641px) {
-            .config-panel-handle { display: none; }
-        }
-
-        /* MapLibre overrides */
-        .maplibregl-ctrl-bottom-right { bottom: 48px !important; }
-        .maplibregl-ctrl-attrib { font-size: 9px !important; }
+        /* utilities */
+        .hidden { display: none !important; }
+        .nowrap { white-space: nowrap; }
     </style>
 </head>
 <body>
 
-    <!-- Loading overlay -->
-    <div id="loading-overlay">
+    <div id="boot">
         <div class="spinner"></div>
-        <div class="loading-text">Loading catalog…</div>
+        <div class="label">Charting Illinois…</div>
     </div>
 
-    <!-- Header -->
-    <header class="header">
-        <div class="header-left">
-            <h1><span class="accent">Exaggerated</span> Relief</h1>
-            <span class="subtitle">Illinois hillshade maps — ISGS ILHMP LiDAR</span>
+    <div id="map"></div>
+
+    <header class="topbar">
+        <div class="brand">
+            <div class="mark"><span class="em">Exaggerated</span> Relief</div>
+            <div class="tag">Illinois LiDAR terrain atlas</div>
         </div>
-        <div class="header-actions">
-            <a href="https://github.com/emuehlstein/illinois-hillshade-gen" target="_blank">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-                </svg>
+        <nav class="topbar-actions">
+            <a href="/status.html" title="Pipeline status">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8zm7-5.5a.5.5 0 0 0-1 0V8a.5.5 0 0 0 .2.4l3.2 2.4a.5.5 0 1 0 .6-.8L8 7.75V2.5z"/></svg>
+                Pipeline
+            </a>
+            <a href="/configurator.html" title="Advanced configurator">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M14 7v2h-3.6a3 3 0 0 1-5.8 0H2V7h2.6a3 3 0 0 1 5.8 0H14zM8 6.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
+                Configure
+            </a>
+            <a href="https://github.com/emuehlstein/illinois-hillshade-gen" target="_blank" rel="noopener" title="Source on GitHub">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
                 GitHub
             </a>
-            <a href="https://github.com/emuehlstein/illinois-hillshade-gen/blob/main/README.md" target="_blank">?</a>
-        </div>
+        </nav>
     </header>
 
-    <!-- Main content -->
-    <div class="main">
-
-        <!-- Illinois map (county selector) -->
-        <div class="map-panel">
-            <div id="selector-map"></div>
-            <div class="map-hint">Click a county to select it</div>
-            <div class="map-legend">
-                <div class="legend-item"><div class="legend-dot available"></div> Tiles available</div>
-                <div class="legend-item"><div class="legend-dot missing"></div> Not yet generated</div>
-            </div>
+    <!-- Legend -->
+    <aside class="legend" id="legend">
+        <div class="legend-title">Coverage Status</div>
+        <div class="legend-items" id="legend-items">
+            <!-- populated by JS -->
         </div>
+    </aside>
 
-        <!-- Configuration panel -->
-        <div class="config-panel" id="config-panel">
-            <div class="config-panel-handle" id="config-handle">
-                <div class="grip"></div>
-                <span class="handle-label">Controls ▲</span>
-            </div>
-
-            <!-- County -->
-            <div class="config-section">
-                <div class="config-label">County</div>
-                <select id="county-select">
-                    <option value="">— select a county —</option>
-                </select>
-            </div>
-
-            <!-- DEM type -->
-            <div class="config-section">
-                <div class="config-label">DEM Source</div>
-                <div class="radio-group" id="dem-group">
-                    <label class="active" data-val="dtm">
-                        <input type="radio" name="dem" value="dtm" checked />
-                        <span>DTM</span><span class="avail-dot no-tile"></span>
-                    </label>
-                    <label data-val="dsm">
-                        <input type="radio" name="dem" value="dsm" />
-                        <span>DSM</span><span class="avail-dot no-tile"></span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Theme -->
-            <div class="config-section">
-                <div class="config-label">Theme</div>
-                <div class="radio-group radio-group-wrap" id="theme-group">
-                    <label data-val="simmon"><span>Simmon</span><span class="avail-dot no-tile"></span></label>
-                    <label data-val="simmon-light"><span>Simmon Light</span><span class="avail-dot no-tile"></span></label>
-                    <label data-val="atak-dark"><span>ATAK Dark</span><span class="avail-dot no-tile"></span></label>
-                    <label data-val="atak-light"><span>ATAK Light</span><span class="avail-dot no-tile"></span></label>
-                    <label data-val="tactical"><span>Tactical</span><span class="avail-dot no-tile"></span></label>
-                    <label data-val="flat-terrain"><span>Flat Terrain</span><span class="avail-dot no-tile"></span></label>
-                    <label data-val="vivid"><span>Vivid</span><span class="avail-dot no-tile"></span></label>
-                    <label data-val="cool"><span>Cool</span><span class="avail-dot no-tile"></span></label>
-                    <label data-val="vivid-elevation"><span>Vivid Elev</span><span class="avail-dot no-tile"></span></label>
-                    <label class="active" data-val="cool-elevation"><span>Cool Elev</span><span class="avail-dot no-tile"></span></label>
-                    <label data-val="grayscale"><span>Grayscale</span><span class="avail-dot no-tile"></span></label>
-                </div>
-            </div>
-
-            <!-- Exaggeration -->
-            <div class="config-section">
-                <div class="config-label">Vertical Exaggeration</div>
-                <div class="radio-group" id="exag-group">
-                    <label data-val="auto">
-                        <input type="radio" name="exag" value="auto" />
-                        <span>Auto</span><span class="avail-dot no-tile"></span>
-                    </label>
-                    <label data-val="3">
-                        <input type="radio" name="exag" value="3" />
-                        <span>3×</span><span class="avail-dot no-tile"></span>
-                    </label>
-                    <label class="active" data-val="9">
-                        <input type="radio" name="exag" value="9" checked />
-                        <span>9×</span><span class="avail-dot no-tile"></span>
-                    </label>
-                    <label data-val="15">
-                        <input type="radio" name="exag" value="15" />
-                        <span>15×</span><span class="avail-dot no-tile"></span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Zoom levels -->
-            <div class="config-section">
-                <div class="config-label">Zoom Levels</div>
-                <div class="zoom-chips" id="zoom-chips"></div>
-                <div class="zoom-actions">
-                    <button onclick="zoomSelectRange(10,16)">10–16</button>
-                    <button onclick="zoomSelectRange(10,18)">10–18</button>
-                    <button onclick="zoomSelectAll()">All</button>
-                    <button onclick="zoomSelectNone()">None</button>
-                </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <!-- Status card -->
-            <div class="config-section status-card" id="status-card">
-                <div class="config-label">Status</div>
-                <div id="status-content">
-                    <div style="color: #6e7681; font-size: 12px;">Select a county to see availability.</div>
-                </div>
-            </div>
-
+    <!-- Coverage stats -->
+    <aside class="coverage" id="coverage">
+        <div class="coverage-row">
+            <span class="num" id="cov-num">—</span>
+            <span class="lbl">of 102 counties</span>
         </div>
+        <div class="coverage-bar" id="cov-bar"></div>
+    </aside>
+
+    <!-- Zoom indicator -->
+    <div id="zoom-badge" style="
+        position: fixed;
+        bottom: 28px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 8;
+        padding: 4px 10px;
+        background: rgba(7, 9, 13, 0.55);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 999px;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+        color: rgba(154, 165, 178, 0.75);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        pointer-events: none;
+        letter-spacing: 0.04em;
+    ">z<span id="zoom-val">—</span></div>
+
+    <!-- Hover tooltip -->
+    <div class="hover-tip" id="hover-tip">
+        <span class="name"></span>
+        <span class="status"><span class="status-dot"></span><span class="status-text"></span></span>
     </div>
 
-
-
-    <!-- Stats bar -->
-    <div class="stats-bar" id="stats-bar">
-        <div class="stat"><strong id="stat-counties">—</strong> counties</div>
-        <span class="stats-separator">|</span>
-        <div class="stat"><strong id="stat-tiles">—</strong> tile sets available</div>
-        <span class="stats-separator">|</span>
-        <div class="stat"><strong id="stat-size">—</strong> total</div>
-        <div class="stat" style="margin-left:auto;">z<strong id="stat-zoom">—</strong></div>
-        <span class="stats-separator">|</span>
-        <div class="stat" style="margin-left: auto; color: #6e7681;">PMTiles via S3 · MapLibre GL JS 5.6.0</div>
-    </div>
+    <!-- Drawer -->
+    <aside class="drawer" id="drawer" aria-hidden="true">
+        <header class="drawer-head">
+            <div>
+                <div class="title" id="drawer-title">—</div>
+                <div class="subtitle" id="drawer-subtitle">—</div>
+            </div>
+            <button class="drawer-close" id="drawer-close" aria-label="Close">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3.3 2.3a1 1 0 0 0-1.4 1.4L6.6 8l-4.7 4.3a1 1 0 1 0 1.4 1.4L8 9.4l4.3 4.3a1 1 0 0 0 1.4-1.4L9.4 8l4.3-4.3a1 1 0 0 0-1.4-1.4L8 6.6 3.3 2.3z"/></svg>
+            </button>
+        </header>
+        <div class="drawer-body" id="drawer-body">
+            <!-- populated by renderDrawer -->
+        </div>
+    </aside>
 
     <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
     <script src="https://unpkg.com/pmtiles@4.4.0/dist/pmtiles.js"></script>
-    <script src="app.js"></script>
+    <script src="atlas.js"></script>
 </body>
 </html>

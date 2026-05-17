@@ -30,10 +30,16 @@ jobs:
 
       - name: Deploy web files to S3
         run: |
-          aws s3 cp web/app.js s3://exaggeratedrelief/app.js \
-            --cache-control "no-cache" --content-type "application/javascript"
           aws s3 cp web/index.html s3://exaggeratedrelief/index.html \
             --cache-control "no-cache" --content-type "text/html"
+          aws s3 cp web/atlas.js s3://exaggeratedrelief/atlas.js \
+            --cache-control "no-cache" --content-type "application/javascript"
+          aws s3 cp web/configurator.html s3://exaggeratedrelief/configurator.html \
+            --cache-control "no-cache" --content-type "text/html"
+          aws s3 cp web/configurator.js s3://exaggeratedrelief/configurator.js \
+            --cache-control "no-cache" --content-type "application/javascript"
+          aws s3 cp web/app.js s3://exaggeratedrelief/app.js \
+            --cache-control "no-cache" --content-type "application/javascript"
           aws s3 cp web/status.html s3://exaggeratedrelief/status.html \
             --cache-control "no-cache" --content-type "text/html"
           aws s3 cp web/catalog.json s3://exaggeratedrelief/catalog.json \
@@ -54,7 +60,7 @@ jobs:
             echo "Invalidating CloudFront distribution $DIST_ID..."
             aws cloudfront create-invalidation \
               --distribution-id "$DIST_ID" \
-              --paths "/app.js" "/index.html" "/status.html" "/catalog.json"
+              --paths "/index.html" "/atlas.js" "/app.js" "/configurator.html" "/configurator.js" "/status.html" "/catalog.json"
             echo "✅ CloudFront cache invalidated"
           else
             echo "⚠️  No CloudFront distribution found — S3 is authoritative, propagation depends on TTL"
