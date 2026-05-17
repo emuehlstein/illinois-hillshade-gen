@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-16T15:09:51Z",
+  "generated": "2026-05-17T10:16:31Z",
   "source": "ISGS ILHMP LiDAR + USGS 3DEP",
   "project": "https://github.com/emuehlstein/illinois-hillshade-gen",
   "themes": [
@@ -434,6 +434,23 @@
           "pmtiles_size_mb": 1300,
           "tile_count": 122186,
           "generated_at": "2026-04-22T00:00:00Z"
+        },
+        {
+          "id": "cook-atak-dark-z10-16",
+          "theme": "atak-dark",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            10,
+            16
+          ],
+          "zoom_str": "10-16",
+          "tile_count": 35757,
+          "size_mb": 2182.5,
+          "local_mbtiles": "/private/tmp/cook-publish/cook-atak-dark-z10-16.mbtiles",
+          "generated_at": "2026-05-17T10:16:31Z",
+          "pmtiles": "tiles/cook-atak-dark-z10-16.pmtiles",
+          "pmtiles_size_mb": 2150.6
         }
       ]
     },
@@ -506,7 +523,93 @@
           "size_gb": 17.6
         }
       },
-      "tiles": [],
+      "tiles": [
+        {
+          "id": "dekalb-atak-dark-z9-16",
+          "theme": "atak-dark",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 11771,
+          "size_mb": 1199.3,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/dekalb-themes-9x/atak-dark/dekalb-atak-dark-z9-16.mbtiles",
+          "generated_at": "2026-05-17T06:09:06Z",
+          "pmtiles": "tiles/dekalb-atak-dark-z9-16.pmtiles",
+          "pmtiles_size_mb": 1189.4
+        },
+        {
+          "id": "dekalb-atak-light-z9-16",
+          "theme": "atak-light",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 11771,
+          "size_mb": 1346.4,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/dekalb-themes-9x/atak-light/dekalb-atak-light-z9-16.mbtiles",
+          "generated_at": "2026-05-17T06:19:24Z",
+          "pmtiles": "tiles/dekalb-atak-light-z9-16.pmtiles",
+          "pmtiles_size_mb": 1336.3
+        },
+        {
+          "id": "dekalb-simmon-z9-16",
+          "theme": "simmon",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 11771,
+          "size_mb": 1127.7,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/dekalb-themes-9x/simmon/dekalb-simmon-z9-16.mbtiles",
+          "generated_at": "2026-05-17T07:08:59Z",
+          "pmtiles": "tiles/dekalb-simmon-z9-16.pmtiles",
+          "pmtiles_size_mb": 1117.9
+        },
+        {
+          "id": "dekalb-simmon-light-z9-16",
+          "theme": "simmon-light",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 11771,
+          "size_mb": 1255.2,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/dekalb-themes-9x/simmon-light/dekalb-simmon-light-z9-16.mbtiles",
+          "generated_at": "2026-05-17T07:19:00Z",
+          "pmtiles": "tiles/dekalb-simmon-light-z9-16.pmtiles",
+          "pmtiles_size_mb": 1245.3
+        },
+        {
+          "id": "dekalb-flat-terrain-z9-16",
+          "theme": "flat-terrain",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 11771,
+          "size_mb": 1116.7,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/dekalb-themes-9x/flat-terrain/dekalb-flat-terrain-z9-16.mbtiles",
+          "generated_at": "2026-05-17T08:09:03Z",
+          "pmtiles": "tiles/dekalb-flat-terrain-z9-16.pmtiles",
+          "pmtiles_size_mb": 1106.9
+        }
+      ],
       "center": [
         -88.764968,
         41.8909545
@@ -831,7 +934,195 @@
           "size_gb": 12.5
         }
       },
-      "tiles": [],
+      "tiles": [
+        {
+          "id": "grundy-atak-dark-z9-16",
+          "theme": "atak-dark",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 7838,
+          "size_mb": 788.1,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/grundy-themes-9x/atak-dark/grundy-atak-dark-z9-16.mbtiles",
+          "generated_at": "2026-05-16T22:16:35Z",
+          "pmtiles": "tiles/grundy-atak-dark-z9-16.pmtiles",
+          "pmtiles_size_mb": 781.6
+        },
+        {
+          "id": "grundy-atak-light-z9-16",
+          "theme": "atak-light",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 7838,
+          "size_mb": 881.0,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/grundy-themes-9x/atak-light/grundy-atak-light-z9-16.mbtiles",
+          "generated_at": "2026-05-16T22:19:50Z",
+          "pmtiles": "tiles/grundy-atak-light-z9-16.pmtiles",
+          "pmtiles_size_mb": 874.4
+        },
+        {
+          "id": "grundy-simmon-z9-16",
+          "theme": "simmon",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 7838,
+          "size_mb": 746.0,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/grundy-themes-9x/simmon/grundy-simmon-z9-16.mbtiles",
+          "generated_at": "2026-05-16T22:22:38Z",
+          "pmtiles": "tiles/grundy-simmon-z9-16.pmtiles",
+          "pmtiles_size_mb": 739.6
+        },
+        {
+          "id": "grundy-simmon-light-z9-16",
+          "theme": "simmon-light",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 7838,
+          "size_mb": 825.5,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/grundy-themes-9x/simmon-light/grundy-simmon-light-z9-16.mbtiles",
+          "generated_at": "2026-05-16T22:25:41Z",
+          "pmtiles": "tiles/grundy-simmon-light-z9-16.pmtiles",
+          "pmtiles_size_mb": 819.0
+        },
+        {
+          "id": "grundy-flat-terrain-z9-16",
+          "theme": "flat-terrain",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 7838,
+          "size_mb": 738.2,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/grundy-themes-9x/flat-terrain/grundy-flat-terrain-z9-16.mbtiles",
+          "generated_at": "2026-05-16T22:28:28Z",
+          "pmtiles": "tiles/grundy-flat-terrain-z9-16.pmtiles",
+          "pmtiles_size_mb": 731.7
+        },
+        {
+          "id": "grundy-tactical-z9-16",
+          "theme": "tactical",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 7838,
+          "size_mb": 699.4,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/grundy-themes-9x/tactical/grundy-tactical-z9-16.mbtiles",
+          "generated_at": "2026-05-16T22:31:05Z",
+          "pmtiles": "tiles/grundy-tactical-z9-16.pmtiles",
+          "pmtiles_size_mb": 692.9
+        },
+        {
+          "id": "grundy-cool-z9-16",
+          "theme": "cool",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 7838,
+          "size_mb": 804.9,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/grundy-themes-9x/cool/grundy-cool-z9-16.mbtiles",
+          "generated_at": "2026-05-16T22:34:07Z",
+          "pmtiles": "tiles/grundy-cool-z9-16.pmtiles",
+          "pmtiles_size_mb": 798.4
+        },
+        {
+          "id": "grundy-cool-elevation-z9-16",
+          "theme": "cool-elevation",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 7355,
+          "size_mb": 680.0,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/grundy-themes-9x/cool-elevation/grundy-cool-elevation-z9-16.mbtiles",
+          "generated_at": "2026-05-16T22:36:43Z",
+          "pmtiles": "tiles/grundy-cool-elevation-z9-16.pmtiles",
+          "pmtiles_size_mb": 674.0
+        },
+        {
+          "id": "grundy-vivid-z9-16",
+          "theme": "vivid",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 7838,
+          "size_mb": 936.9,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/grundy-themes-9x/vivid/grundy-vivid-z9-16.mbtiles",
+          "generated_at": "2026-05-16T22:40:10Z",
+          "pmtiles": "tiles/grundy-vivid-z9-16.pmtiles",
+          "pmtiles_size_mb": 930.3
+        },
+        {
+          "id": "grundy-vivid-elevation-z9-16",
+          "theme": "vivid-elevation",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 7355,
+          "size_mb": 696.0,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/grundy-themes-9x/vivid-elevation/grundy-vivid-elevation-z9-16.mbtiles",
+          "generated_at": "2026-05-16T22:42:45Z",
+          "pmtiles": "tiles/grundy-vivid-elevation-z9-16.pmtiles",
+          "pmtiles_size_mb": 689.9
+        },
+        {
+          "id": "grundy-grayscale-z9-16",
+          "theme": "grayscale",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 7838,
+          "size_mb": 605.4,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/grundy-themes-9x/grayscale/grundy-grayscale-z9-16.mbtiles",
+          "generated_at": "2026-05-16T22:45:00Z",
+          "pmtiles": "tiles/grundy-grayscale-z9-16.pmtiles",
+          "pmtiles_size_mb": 599.2
+        }
+      ],
       "center": [
         -88.4184245,
         41.285694500000005
@@ -1359,6 +1650,40 @@
           "generated_at": "2026-05-16T15:09:51Z",
           "pmtiles": "tiles/kendall-tactical-z9-16.pmtiles",
           "pmtiles_size_mb": 528.7
+        },
+        {
+          "id": "kendall-vivid-z9-16",
+          "theme": "vivid",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 5941,
+          "size_mb": 717.7,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x/vivid/kendall-vivid-z9-16.mbtiles",
+          "generated_at": "2026-05-17T05:04:11Z",
+          "pmtiles": "tiles/kendall-vivid-z9-16.pmtiles",
+          "pmtiles_size_mb": 712.6
+        },
+        {
+          "id": "kendall-vivid-elevation-z9-16",
+          "theme": "vivid-elevation",
+          "dem": "dtm",
+          "exaggeration": "auto",
+          "zoom": [
+            9,
+            16
+          ],
+          "zoom_str": "9-16",
+          "tile_count": 5596,
+          "size_mb": 524.8,
+          "local_mbtiles": "/Volumes/ExtSSD1TB/dem/IL/kendall-themes-9x/vivid-elevation/kendall-vivid-elevation-z9-16.mbtiles",
+          "generated_at": "2026-05-17T05:34:30Z",
+          "pmtiles": "tiles/kendall-vivid-elevation-z9-16.pmtiles",
+          "pmtiles_size_mb": 520.3
         }
       ],
       "center": [
