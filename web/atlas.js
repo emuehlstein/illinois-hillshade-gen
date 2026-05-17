@@ -169,7 +169,7 @@ function onMapLoad() {
       'fill-color': buildStatusExpression(),
       'fill-opacity': [
         'case',
-        ['boolean', ['feature-state', 'selected'], false], 0.55,
+        ['boolean', ['feature-state', 'selected'], false], 0.08,
         ['boolean', ['feature-state', 'hover'], false],    0.65,
         0.55,
       ],
@@ -205,7 +205,7 @@ function onMapLoad() {
       ],
       'line-width': [
         'case',
-        ['boolean', ['feature-state', 'selected'], false], 2,
+        ['boolean', ['feature-state', 'selected'], false], 2.5,
         0.6,
       ],
     },
