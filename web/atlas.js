@@ -28,6 +28,41 @@ const STATUS_LABELS = {
   missing:    'Missing',
 };
 
+// ── URL state ────────────────────────────────────────────────
+// Hash format: #county=cook&z=9.5&lat=41.83&lng=-87.89
+// All params optional. On load we restore; on change we push.
+
+let _hashUpdateTimer = null;
+
+function readHash() {
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  return {
+    county: params.get('county') || null,
+    z:      params.has('z')   ? parseFloat(params.get('z'))   : null,
+    lat:    params.has('lat') ? parseFloat(params.get('lat')) : null,
+    lng:    params.has('lng') ? parseFloat(params.get('lng')) : null,
+  };
+}
+
+function writeHash(opts = {}) {
+  const params = new URLSearchParams();
+  const county = opts.county ?? selectedId;
+  const center = map ? map.getCenter() : null;
+  const zoom   = map ? map.getZoom()   : null;
+  if (county) params.set('county', county);
+  if (zoom   != null) params.set('z',   zoom.toFixed(2));
+  if (center != null) { params.set('lat', center.lat.toFixed(5)); params.set('lng', center.lng.toFixed(5)); }
+  const hash = '#' + params.toString();
+  if (window.location.hash !== hash) {
+    history.replaceState(null, '', hash);
+  }
+}
+
+function scheduleHashUpdate() {
+  clearTimeout(_hashUpdateTimer);
+  _hashUpdateTimer = setTimeout(writeHash, 300);
+}
+
 // ── Runtime state ──────────────────────────────────────────────
 let catalog    = null;
 let statusIdx  = null;   // status/index.json
@@ -152,6 +187,7 @@ function buildMap() {
   const zoomVal = document.getElementById('zoom-val');
   const updateZoom = () => { if (zoomVal) zoomVal.textContent = map.getZoom().toFixed(1); };
   map.on('zoom', updateZoom);
+  map.on('moveend', scheduleHashUpdate);
   map.on('load', () => { updateZoom(); onMapLoad(); });
 }
 
@@ -215,6 +251,17 @@ function onMapLoad() {
   });
 
   setupInteractions();
+
+  // Restore state from URL hash
+  const initial = readHash();
+  if (initial.lat != null && initial.lng != null) {
+    map.jumpTo({ center: [initial.lng, initial.lat], zoom: initial.z ?? IL_ZOOM });
+  }
+  if (initial.county && catalog.counties[initial.county]) {
+    // Wait a tick so the map source is ready for feature-state
+    requestAnimationFrame(() => selectCounty(initial.county));
+  }
+
   hideBoot();
 }
 
@@ -308,6 +355,7 @@ function selectCounty(id) {
 
   renderDrawer(id);
   openDrawer();
+  writeHash();
 
   // Auto-load preview if available
   if (info.status === 'available' || info.status === 'partial') {
@@ -334,6 +382,7 @@ function closeDrawer() {
     selectedFeatId = null;
   }
   removePreview();
+  writeHash({ county: null });
 }
 
 // ── Drawer rendering ───────────────────────────────────────────
