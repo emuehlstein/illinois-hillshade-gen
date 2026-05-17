@@ -262,9 +262,8 @@ function onMapLoad() {
   }
   if (initial.county && catalog.counties[initial.county]) {
     // Restore theme before selectCounty so it picks the right tile
-    if (initial.theme) activeTheme = initial.theme;
     // Wait a tick so the map source is ready for feature-state
-    requestAnimationFrame(() => selectCounty(initial.county));
+    requestAnimationFrame(() => selectCounty(initial.county, initial.theme));
   }
 
   hideBoot();
@@ -342,7 +341,7 @@ function setupInteractions() {
 }
 
 // ── Select + drawer ────────────────────────────────────────────
-function selectCounty(id) {
+function selectCounty(id, theme) {
   // Deselect previous
   if (selectedFeatId) {
     map.setFeatureState({ source: 'counties', id: selectedFeatId }, { selected: false });
@@ -354,9 +353,9 @@ function selectCounty(id) {
   // Remove any existing preview
   removePreview();
 
-  // Set default theme to first available
+  // Use provided theme, fall back to first available tile's theme
   const info = countyStatus[id] || {};
-  activeTheme = info.tiles?.[0]?.theme || null;
+  activeTheme = theme || info.tiles?.[0]?.theme || null;
 
   renderDrawer(id);
   openDrawer();
