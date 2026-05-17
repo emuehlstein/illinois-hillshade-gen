@@ -235,6 +235,7 @@ out/
 | PMTiles CDN | `exaggeratedrelief.com` | CloudFront → `s3://exaggeratedrelief` |
 | EC2 workers | AWS us-east-2 | c7g.2xlarge spot, launched by `generate-aws.sh` |
 | SSH key | `~/.ssh/mapserver-ec2.pem` | Key pair name: `mapserver` |
+| IAM instance profile | `hillshade-worker-s3` | Attached at launch; grants S3 read/write on `ilhmp-dem-cache`. **Required** — without it S3 caching silently fails. |
 | S3 intermediates | `s3://ilhmp-dem-cache` | DEM + grayscale TIF cache for large counties |
 | Catalog | `web/catalog.json` | Source of truth for all published tiles |
 | Legacy tile server | `tiles.chicagooffline.com` | Same EC2, kept alive for existing ATAK configs |
