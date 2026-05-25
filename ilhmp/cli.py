@@ -76,6 +76,9 @@ def run(
     cache_dir: Optional[str] = typer.Option(None, "--cache-dir", help="Local path or s3:// URI for intermediate file caching."),
     source_zip: Optional[Path] = typer.Option(None, "--source-zip", help="Use a local ZIP instead of downloading. Still extracts and converts."),
     source: Optional[Path] = typer.Option(None, "--source", help="Use an existing GeoTIFF directly. Skips download and extraction."),
+    method: str = typer.Option("zip", "--method", help="Download method: 'zip' (full county ZIP, default) or 'imageserver' (ArcGIS export, bbox only — faster for sub-county areas)."),
+    bounds: Optional[str] = typer.Option(None, "--bounds", help="Bounding box for imageserver method: 'minlon,minlat,maxlon,maxlat' (WGS84)."),
+    imageserver_year: Optional[str] = typer.Option(None, "--imageserver-year", help="ILHMP collection year to use with imageserver method (default: latest)."),
     pmtiles: bool = typer.Option(False, "--pmtiles", help="Also generate PMTiles output"),
     view: bool = typer.Option(False, "--view", "-v", help="Launch viewer after completion"),
     json_out: bool = typer.Option(False, "--json", help="Output structured JSON instead of Rich text"),
@@ -124,12 +127,16 @@ def run(
 
     county_info = counties.get_county(county)
     if not county_info:
-        if json_out:
+        if source or source_zip:
+            # Allow arbitrary region names when a local source is provided
+            county_info = {"name": county, "display_name": county.title(), "custom": True}
+        elif json_out:
             print(json.dumps({"error": f"Unknown county: {county}"}))
+            raise typer.Exit(1)
         else:
             console.print(f"[red]Unknown county: {county}[/red]")
             console.print("Run 'ilhmp counties' to list available counties")
-        raise typer.Exit(1)
+            raise typer.Exit(1)
 
     if source and not source.exists():
         msg = f"Source file not found: {source}"
@@ -197,6 +204,18 @@ def run(
             console.print("[red]--composite-weights must be 'multi,igor,combined' (e.g. '0.6,0.3,0.1')[/red]")
             raise typer.Exit(1)
 
+    # Parse --bounds if provided
+    _parsed_bounds: Optional[Tuple[float, float, float, float]] = None
+    if bounds:
+        try:
+            parts = [float(x) for x in bounds.split(",")]
+            if len(parts) != 4:
+                raise ValueError
+            _parsed_bounds = tuple(parts)  # type: ignore[assignment]
+        except ValueError:
+            console.print("[red]--bounds must be 'minlon,minlat,maxlon,maxlat'[/red]")
+            raise typer.Exit(1)
+
     if not json_out:
         console.print(f"\n[bold]Illinois Hillshade Generator[/bold]")
         console.print(f"   County: {county_info['name']}")
@@ -208,6 +227,10 @@ def run(
         console.print(f"   Output: {output_dir}")
         if cache_dir:
             console.print(f"   Cache: {cache_dir}")
+        if method == "imageserver":
+            console.print(f"   Source: ISGS ImageServer (bbox export)")
+            if _parsed_bounds:
+                console.print(f"   Bounds: {_parsed_bounds}")
         console.print()
 
     # Step 1: Acquire DEM
@@ -232,11 +255,25 @@ def run(
         _phase("download_dem", 20, f"DEM extracted: {dem_path.name}")
         if not json_out:
             console.print(f"[green]✓[/green] Extracted: {dem_path}")
+    elif method == "imageserver":
+        _phase("download_dem", 10, f"Downloading {dem.upper()} DEM via ImageServer for {county}")
+        if not json_out:
+            console.print("[bold]Step 1/5:[/bold] Downloading via ISGS ImageServer...")
+        download.download_county(
+            county, dem, dem_path,
+            bounds=_parsed_bounds,
+            cache_dir=cache_dir,
+            method="imageserver",
+        )
+        _cache_info["dem"] = "imageserver"
+        _phase("download_dem", 20, f"DEM downloaded via ImageServer: {dem_path.name}")
+        if not json_out:
+            console.print(f"[green]✓[/green] Downloaded: {dem_path}")
     else:
         _phase("download_dem", 10, f"Downloading {dem.upper()} DEM for {county}")
         if not json_out:
             console.print("[bold]Step 1/5:[/bold] Downloading elevation data...")
-        download.download_county(county, dem, dem_path)
+        download.download_county(county, dem, dem_path, cache_dir=cache_dir)
         _cache_info["dem"] = "downloaded"
         _phase("download_dem", 20, f"DEM downloaded: {dem_path.name}")
         if not json_out:
